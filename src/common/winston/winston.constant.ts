@@ -1,0 +1,1 @@
+export const WINSTON_LOGGER = 'WINSTON_LOGGER';
