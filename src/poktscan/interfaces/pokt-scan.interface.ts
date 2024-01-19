@@ -1,11 +1,8 @@
-interface PoktScanNodeItem {
-  address: string;
+export interface PoktScanNodeItem {
   output_address: string;
-  balance: number;
-  output_balance: number;
   service_domain: string;
   custodial: boolean;
-  stake_weight: number;
+  tokens: number;
 }
 
 export interface PoktScanNodePagination {
@@ -22,4 +19,13 @@ export interface PoktScanResponse {
   };
 }
 
-export interface PoktScanOutput extends Array<PoktScanNodeItem> {}
+export interface PoktScanOutput {
+  custodian: Array<{
+    domain: string;
+    staked_amount: number;
+  }>;
+  non_custodian: Array<{
+    wallet_address: string;
+    staked_amount: number;
+  }>;
+}

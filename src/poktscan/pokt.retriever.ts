@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { WinstonProvider } from '@common/winston/winston.provider';
 import { BaseRetriever } from './interfaces/common.interface';
 import {
+  PoktScanNodeItem,
   PoktScanNodePagination,
   PoktScanOutput,
   PoktScanResponse,
@@ -54,18 +55,21 @@ export class PoktScanRetriever implements BaseRetriever<never, PoktScanOutput> {
       ListPoktNode(
         pagination: {
           cursor: $cursor
-          limit: 1000000
+          limit: 1500
           sort: { property: "_id", direction: -1 }
+          filter: {
+            operator: AND
+            properties: [
+              { property: "status", operator: EQ, type: INT, value: "2" }
+            ]
+          }
         }
       ) {
         items {
-          address
           output_address
-          balance
-          output_balance
           service_domain
           custodial
-          stake_weight
+          tokens
         }
         pageInfo {
           has_next
@@ -81,7 +85,7 @@ export class PoktScanRetriever implements BaseRetriever<never, PoktScanOutput> {
 
   private async getListNodeData() {
     const query = this.getPoktNodeGQL();
-    const results: PoktScanOutput = [];
+    const results: Array<PoktScanNodeItem> = [];
 
     let nextPage = null;
 
@@ -97,7 +101,34 @@ export class PoktScanRetriever implements BaseRetriever<never, PoktScanOutput> {
     return results;
   }
 
+  private serializer(nodeItems: Array<PoktScanNodeItem>): PoktScanOutput {
+    const result: PoktScanOutput = {
+      custodian: [],
+      non_custodian: [],
+    };
+
+    for (let index = 0; index < nodeItems.length; index++) {
+      const nodeItem = nodeItems[index];
+
+      if (nodeItem.custodial === true) {
+        result.custodian.push({
+          domain: nodeItem.service_domain,
+          staked_amount: nodeItem.tokens / 10 ** 6,
+        });
+      } else {
+        result.non_custodian.push({
+          wallet_address: nodeItem.output_address,
+          staked_amount: nodeItem.tokens / 10 ** 6,
+        });
+      }
+    }
+
+    return result;
+  }
+
   async retrieve(): Promise<PoktScanOutput> {
-    return await this.getListNodeData();
+    const nodeItems = await this.getListNodeData();
+
+    return this.serializer(nodeItems);
   }
 }
