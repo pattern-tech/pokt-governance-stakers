@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import DNS from 'dns/promises';
+import { WinstonProvider } from '@common/winston/winston.provider';
 
 @Injectable()
 export class DNSResolver {
+  constructor(private readonly logger: WinstonProvider) {}
+
   private async getTXTRecords(domain: string) {
     const finalRecords: Array<string> = [];
     const records = await DNS.resolveTxt(domain);
@@ -17,15 +20,19 @@ export class DNSResolver {
   }
 
   async getGatewayIDFromDomain(domain: string): Promise<string | false> {
-    const records = await this.getTXTRecords(domain);
+    try {
+      const records = await this.getTXTRecords(domain);
 
-    for (let idx = 0; idx < records.length; idx++) {
-      const record = records[idx];
-      const [identifier, value] = record.split('=');
+      for (let idx = 0; idx < records.length; idx++) {
+        const record = records[idx];
+        const [identifier, value] = record.split('=');
 
-      if (identifier === 'GATEWAY_ID') {
-        return value;
+        if (identifier === 'GATEWAY_ID') {
+          return value;
+        }
       }
+    } catch (err) {
+      this.logger.error(err.message, DNSResolver.name, { stack: err.stack });
     }
 
     return false;

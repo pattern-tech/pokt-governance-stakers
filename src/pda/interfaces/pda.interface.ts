@@ -20,12 +20,22 @@ interface StakerPDAClaim {
   type: StakerPDAType;
 }
 export interface IssuedPDA {
+  id: string;
   status: 'Valid' | 'Suspended' | 'Revoked' | 'Expired';
   dataAsset: {
     claim:
       | PDAClaimBase<'citizen'>
       | PDAClaimBase<'builder'>
       | (PDAClaimBase<'staker'> & StakerPDAClaim);
+    owner: {
+      gatewayId: string;
+    };
+  };
+}
+
+export interface IssuedStakerPDA extends IssuedPDA {
+  dataAsset: {
+    claim: PDAClaimBase<'staker'> & StakerPDAClaim;
     owner: {
       gatewayId: string;
     };
@@ -52,4 +62,32 @@ export interface IssuedPDACountResponse {
 
 export interface IssuedPDACountVariables {
   org_gateway_id: string;
+}
+
+export interface IssueNewStakerPDAVariables {
+  org_gateway_id: string;
+  data_model_id: string;
+  owner: string;
+  claim: PDAClaimBase<'staker'> & StakerPDAClaim;
+}
+
+export interface IssueNewStakerPDAResponse {
+  data: {
+    createPDA: {
+      id: string;
+    };
+  };
+}
+
+export interface UpdateStakerPDAVariables {
+  pda_id: string;
+  point: number;
+}
+
+export interface UpdateStakerPDAResponse {
+  data: {
+    updatePDA: {
+      id: string;
+    };
+  };
 }

@@ -1,15 +1,19 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { reduce } from 'lodash';
 import { firstValueFrom } from 'rxjs';
+import { CoreAddAction, CoreUpdateAction } from '../core.interface';
 import { Pagination } from './interfaces/common.interface';
 import {
-  IssuedPDA,
+  IssueNewStakerPDAResponse,
+  IssueNewStakerPDAVariables,
   IssuedPDACountResponse,
   IssuedPDACountVariables,
   IssuedPDAsResponse,
   IssuedPDAsVariables,
+  IssuedStakerPDA,
+  UpdateStakerPDAResponse,
+  UpdateStakerPDAVariables,
 } from './interfaces/pda.interface';
 
 @Injectable()
@@ -54,6 +58,7 @@ export class PDAService {
           skip: $skip
           order: { issuanceDate: "DESC" }
       ) {
+          id
           status
           dataAsset {
               claim
@@ -77,11 +82,11 @@ export class PDAService {
   private pagination(max: number): Array<Pagination> {
     const pages: Array<Pagination> = [];
 
-    if (max <= 15) {
+    if (max <= 100) {
       pages.push({ take: max, skip: 0 });
     } else {
-      const pages_count = Math.ceil(max / 15);
-      let take = 15;
+      const pages_count = Math.ceil(max / 100);
+      let take = 100;
       let skip = 0;
 
       for (let page = 1; page <= pages_count; page++) {
@@ -90,14 +95,14 @@ export class PDAService {
         pages.push({ take, skip });
 
         skip += take;
-        take = items_diff < 15 ? items_diff : 15;
+        take = items_diff < 100 ? items_diff : 100;
       }
     }
 
     return pages;
   }
 
-  async getIssuedPDAs() {
+  async getIssuedStakerPDAs() {
     const ORG_GATEWAY_ID = this.config.get<string>('POKT_ORG_GATEWAY_ID');
 
     const pdaCountQuery = this.getIssuedPDACountGQL();
@@ -123,14 +128,95 @@ export class PDAService {
       promises.push(this.request<IssuedPDAsResponse>(pdaQuery, pdaVariables));
     }
 
-    return reduce<IssuedPDAsResponse, Array<IssuedPDA>>(
-      await Promise.all(promises),
-      (final, current) => {
-        final.push(...current.data.issuedPDAs);
+    const responses: Array<IssuedPDAsResponse> = await Promise.all(promises);
+    const results: Array<IssuedStakerPDA> = [];
 
-        return final;
-      },
-      [],
-    );
+    for (let res_idx = 0; res_idx < responses.length; res_idx++) {
+      const PDAs = responses[res_idx].data.issuedPDAs;
+
+      for (let pda_idx = 0; pda_idx < PDAs.length; pda_idx++) {
+        const PDA = PDAs[pda_idx];
+
+        if (
+          PDA.status === 'Valid' &&
+          PDA.dataAsset.claim.pdaType === 'staker'
+        ) {
+          results.push(PDA as IssuedStakerPDA);
+        }
+      }
+    }
+
+    return results;
+  }
+
+  private getIssueStakerPdaGQL() {
+    return `
+    mutation CreatePDA(
+      $org_gateway_id: String!
+      $data_model_id: String!
+      $owner: String!
+      $claim: JSON!
+    ) {
+      createPDA(
+          input: {
+              dataModelId: $data_model_id
+              title: "Pocket Network Staker"
+              description: "Servicer or Validator Path"
+              owner: { type: GATEWAY_ID, value: $owner }
+              organization: { type: GATEWAY_ID, value: $org_gateway_id }
+              claim: $claim
+          }
+      ) {
+          id
+      }
+    }`;
+  }
+
+  async issueNewStakerPDA(addActions: Array<CoreAddAction>) {
+    const query = this.getIssueStakerPdaGQL();
+    const DATA_MODEL_ID = this.config.get<string>('POKT_STAKER_DATA_MODEL_ID');
+    const ORG_GATEWAY_ID = this.config.get<string>('POKT_ORG_GATEWAY_ID');
+
+    for (let idx = 0; idx < addActions.length; idx++) {
+      const addAction = addActions[idx];
+
+      const variables: IssueNewStakerPDAVariables = {
+        data_model_id: DATA_MODEL_ID,
+        org_gateway_id: ORG_GATEWAY_ID,
+        owner: addAction.owner_gateway_id,
+        claim: {
+          pdaSubtype: addAction.pda_sub_type,
+          pdaType: 'staker',
+          type: addAction.node_type,
+          point: addAction.point,
+        },
+      };
+
+      this.request<IssueNewStakerPDAResponse>(query, variables);
+    }
+  }
+
+  private getUpdateStakerPdaGQL() {
+    return `
+    mutation updatePDA($PDA_ID: String!, $point: Int!) {
+      updatePDA(input: { id: $PDA_ID, claim: { point: $point } }) {
+          id
+      }
+    }`;
+  }
+
+  async updateIssuedStakerPDAs(updateActions: Array<CoreUpdateAction>) {
+    const query = this.getUpdateStakerPdaGQL();
+
+    for (let idx = 0; idx < updateActions.length; idx++) {
+      const updateAction = updateActions[idx];
+
+      const variables: UpdateStakerPDAVariables = {
+        pda_id: updateAction.pda_id,
+        point: updateAction.point,
+      };
+
+      await this.request<UpdateStakerPDAResponse>(query, variables);
+    }
   }
 }

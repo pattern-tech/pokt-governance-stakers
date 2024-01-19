@@ -47,9 +47,9 @@ import { CoreService } from './core.service';
       inject: [ConfigService],
     }),
     ScheduleModule.forRoot(),
-    PDAModule,
     PoktModule,
     DNSModule,
+    PDAModule,
   ],
   providers: [CoreService],
 })
