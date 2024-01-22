@@ -5,12 +5,12 @@ import { AxiosResponse } from 'axios';
 import { of } from 'rxjs';
 import {
   IssueNewStakerPDAResponse,
-  IssuedPDA,
   IssuedPDACountResponse,
   IssuedPDAsResponse,
   IssuedStakerPDA,
+  UpdateStakerPDAVariables,
 } from '../interfaces/pda.interface';
-import { CoreAddAction } from 'src/core.interface';
+import { CoreAddAction, CoreUpdateAction } from 'src/core.interface';
 import { PDAService } from '../pda.service';
 
 describe('PDAService', () => {
@@ -280,7 +280,7 @@ describe('PDAService', () => {
     test('Should be defined', () => {
       expect(service['getIssuedStakerPDAs']).toBeDefined();
     });
-    test('Should return getIssueStakerPdaGQL graphQL query', () => {
+    test('Should return getIssueStakerPda graphQL query', () => {
       expect(service['getIssueStakerPdaGQL']()).toBe(
         `
     mutation CreatePDA(
@@ -335,6 +335,50 @@ describe('PDAService', () => {
         .mockReturnValueOnce(issueNewStakerPDAResponse);
       await service.issueNewStakerPDA(addActions);
       expect(service['request']).toHaveBeenCalledTimes(addActions.length);
+      expect(service['request']).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('getUpdateStakerPdaGQL', () => {
+    test('Should be defined', () => {
+      expect(service['getUpdateStakerPdaGQL']).toBeDefined();
+    });
+    test('Should return getUpdateStakerPda graphQL query', () => {
+      expect(service['getUpdateStakerPdaGQL']()).toBe(
+        `
+    mutation updatePDA($PDA_ID: String!, $point: Int!) {
+      updatePDA(input: { id: $PDA_ID, claim: { point: $point } }) {
+          id
+      }
+    }`,
+      );
+    });
+  });
+
+  describe('updateIssuedStakerPDAs', () => {
+    let updateActions: Array<CoreUpdateAction>;
+    let updateStakerPDAVariables: UpdateStakerPDAVariables;
+    beforeEach(() => {
+      updateStakerPDAVariables = {
+        pda_id: 'id',
+        point: 1,
+      };
+      updateActions = [
+        {
+          pda_id: 'id',
+          point: 1,
+        },
+      ];
+    });
+    test('Should be defined', () => {
+      expect(service.updateIssuedStakerPDAs).toBeDefined();
+    });
+    test('Should update staker PDAs', async () => {
+      jest
+        .spyOn(service as any, 'request')
+        .mockReturnValueOnce(updateStakerPDAVariables);
+      await service.updateIssuedStakerPDAs(updateActions);
+      expect(service['request']).toHaveBeenCalledTimes(updateActions.length);
       expect(service['request']).toHaveBeenCalledTimes(1);
     });
   });
