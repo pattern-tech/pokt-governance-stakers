@@ -4,11 +4,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AxiosResponse } from 'axios';
 import { of } from 'rxjs';
 import {
+  IssueNewStakerPDAResponse,
   IssuedPDA,
   IssuedPDACountResponse,
   IssuedPDAsResponse,
   IssuedStakerPDA,
 } from '../interfaces/pda.interface';
+import { CoreAddAction } from 'src/core.interface';
 import { PDAService } from '../pda.service';
 
 describe('PDAService', () => {
@@ -183,37 +185,6 @@ describe('PDAService', () => {
     let returnValue: Array<IssuedStakerPDA>;
     let PDAResponse: IssuedPDAsResponse;
     let PDA: IssuedStakerPDA;
-
-    // beforeEach(() => {
-    //   issuedPDACountResponse = {
-    //     data: { issuedPDAsCount: 1 },
-    //   };
-    //   PDAResponse = {
-    //     data: {
-    //       issuedPDAs: [
-    //         {
-    //           id: 'Id',
-    //           status: 'Valid',
-    //           dataAsset: {
-    //             claim: {
-    //               point: 4,
-    //               pdaType: 'staker',
-    //               pdaSubtype: 'Gateway',
-    //               type: 'custodian',
-    //             },
-    //             owner: {
-    //               gatewayId: 'gatewayID',
-    //             },
-    //           },
-    //         },
-    //       ],
-    //     },
-    //   };
-    //   jest
-    //     .spyOn(service as any, 'request')
-    //     .mockReturnValueOnce(issuedPDACountResponse);
-    //   jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
-    // });
     test('Should be defined', () => {
       expect(service.getIssuedStakerPDAs).toBeDefined();
     });
@@ -302,6 +273,69 @@ describe('PDAService', () => {
       jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
       returnValue = await service.getIssuedStakerPDAs();
       expect(returnValue).toEqual([PDA]);
+    });
+  });
+
+  describe('getIssueStakerPdaGQL', () => {
+    test('Should be defined', () => {
+      expect(service['getIssuedStakerPDAs']).toBeDefined();
+    });
+    test('Should return getIssueStakerPdaGQL graphQL query', () => {
+      expect(service['getIssueStakerPdaGQL']()).toBe(
+        `
+    mutation CreatePDA(
+      $org_gateway_id: String!
+      $data_model_id: String!
+      $owner: String!
+      $claim: JSON!
+    ) {
+      createPDA(
+          input: {
+              dataModelId: $data_model_id
+              title: "Pocket Network Staker"
+              description: "Servicer or Validator Path"
+              owner: { type: GATEWAY_ID, value: $owner }
+              organization: { type: GATEWAY_ID, value: $org_gateway_id }
+              claim: $claim
+          }
+      ) {
+          id
+      }
+    }`,
+      );
+    });
+  });
+
+  describe('issueNewStakerPDA', () => {
+    let addActions: Array<CoreAddAction>;
+    let issueNewStakerPDAResponse: IssueNewStakerPDAResponse;
+    beforeEach(() => {
+      issueNewStakerPDAResponse = {
+        data: {
+          createPDA: {
+            id: 'id',
+          },
+        },
+      };
+      addActions = [
+        {
+          point: 1,
+          pda_sub_type: 'Gateway',
+          node_type: 'custodian',
+          owner_gateway_id: 'is',
+        },
+      ];
+    });
+    test('Should be defined', () => {
+      expect(service.issueNewStakerPDA).toBeDefined();
+    });
+    test('Should issue new staker PDAs', async () => {
+      jest
+        .spyOn(service as any, 'request')
+        .mockReturnValueOnce(issueNewStakerPDAResponse);
+      await service.issueNewStakerPDA(addActions);
+      expect(service['request']).toHaveBeenCalledTimes(addActions.length);
+      expect(service['request']).toHaveBeenCalledTimes(1);
     });
   });
 });
