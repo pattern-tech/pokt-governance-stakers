@@ -89,4 +89,86 @@ describe('PDAService', () => {
       expect(returnValue).toEqual(axiosResponse.data);
     });
   });
+
+  describe('getIssuedPDAsGQL', () => {
+    let returnValue: string;
+
+    beforeAll(() => {
+      returnValue = service['getIssuedPDAsGQL']();
+    });
+    test('Should be defined', () => {
+      expect(service['getIssuedPDAsGQL']).toBeDefined();
+    });
+
+    test('Should return getIssuedPDAs graphQL query', () => {
+      // Assert
+      expect(returnValue).toBe(
+        `
+    query getPDAs($org_gateway_id: String!, $take: Float!, $skip: Float!) {
+      issuedPDAs(
+          filter: { organization: { type: GATEWAY_ID, value: $org_gateway_id } }
+          take: $take
+          skip: $skip
+          order: { issuanceDate: "DESC" }
+      ) {
+          id
+          status
+          dataAsset {
+              claim
+              owner {
+                  gatewayId
+              }
+          }
+      }
+    }`,
+      );
+    });
+  });
+  describe('When getIssuedPDACountGQL method called', () => {
+    let returnValue: string;
+
+    beforeEach(() => {
+      returnValue = service['getIssuedPDACountGQL']();
+    });
+
+    test('Should be defined', () => {
+      // Assert
+      expect(service['getIssuedPDACountGQL']).toBeDefined();
+    });
+
+    test('Should return IssuedPDACount graphQL query', () => {
+      // Assert
+      expect(returnValue).toBe(
+        `
+    query IssuedPDAsCount($org_gateway_id: String!) {
+        issuedPDAsCount(
+            filter: { organization: { type: GATEWAY_ID, value: $org_gateway_id } }
+        )
+    }`,
+      );
+    });
+  });
+  describe('When pagination method called', () => {
+    test("Should return pagination when max's value less or equal that 15", () => {
+      // Assert
+      expect(service['pagination'](99)).toEqual([{ take: 99, skip: 0 }]);
+      expect(service['pagination'](100)).toEqual([{ take: 100, skip: 0 }]);
+    });
+
+    test("Should return pagination when max's value greater that 15", () => {
+      // Assert
+      expect(service['pagination'](350)).toEqual([
+        { take: 100, skip: 0 },
+        { take: 100, skip: 100 },
+        { take: 100, skip: 200 },
+        { take: 50, skip: 300 },
+      ]);
+      expect(service['pagination'](400)).toEqual([
+        { take: 100, skip: 0 },
+        { take: 100, skip: 100 },
+        { take: 100, skip: 200 },
+        { take: 100, skip: 300 },
+      ]);
+    });
+  });
 });
