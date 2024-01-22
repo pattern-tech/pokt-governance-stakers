@@ -1,9 +1,15 @@
 import { HttpModule, HttpService } from '@nestjs/axios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import { of } from 'rxjs';
-import { PDAService } from '../pda.service';
 import { AxiosResponse } from 'axios';
+import { of } from 'rxjs';
+import {
+  IssuedPDA,
+  IssuedPDACountResponse,
+  IssuedPDAsResponse,
+  IssuedStakerPDA,
+} from '../interfaces/pda.interface';
+import { PDAService } from '../pda.service';
 
 describe('PDAService', () => {
   let service: PDAService;
@@ -124,7 +130,7 @@ describe('PDAService', () => {
       );
     });
   });
-  describe('When getIssuedPDACountGQL method called', () => {
+  describe('getIssuedPDACountGQL', () => {
     let returnValue: string;
 
     beforeEach(() => {
@@ -148,7 +154,7 @@ describe('PDAService', () => {
       );
     });
   });
-  describe('When pagination method called', () => {
+  describe('pagination', () => {
     test("Should return pagination when max's value less or equal that 15", () => {
       // Assert
       expect(service['pagination'](99)).toEqual([{ take: 99, skip: 0 }]);
@@ -169,6 +175,133 @@ describe('PDAService', () => {
         { take: 100, skip: 200 },
         { take: 100, skip: 300 },
       ]);
+    });
+  });
+
+  describe('getIssuedStakerPDAs', () => {
+    let issuedPDACountResponse: IssuedPDACountResponse;
+    let returnValue: Array<IssuedStakerPDA>;
+    let PDAResponse: IssuedPDAsResponse;
+    let PDA: IssuedStakerPDA;
+
+    // beforeEach(() => {
+    //   issuedPDACountResponse = {
+    //     data: { issuedPDAsCount: 1 },
+    //   };
+    //   PDAResponse = {
+    //     data: {
+    //       issuedPDAs: [
+    //         {
+    //           id: 'Id',
+    //           status: 'Valid',
+    //           dataAsset: {
+    //             claim: {
+    //               point: 4,
+    //               pdaType: 'staker',
+    //               pdaSubtype: 'Gateway',
+    //               type: 'custodian',
+    //             },
+    //             owner: {
+    //               gatewayId: 'gatewayID',
+    //             },
+    //           },
+    //         },
+    //       ],
+    //     },
+    //   };
+    //   jest
+    //     .spyOn(service as any, 'request')
+    //     .mockReturnValueOnce(issuedPDACountResponse);
+    //   jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
+    // });
+    test('Should be defined', () => {
+      expect(service.getIssuedStakerPDAs).toBeDefined();
+    });
+
+    test('Should return an empty array when countResponse is 0', async () => {
+      // Arrange
+      issuedPDACountResponse = {
+        data: { issuedPDAsCount: 0 },
+      };
+      PDAResponse = {
+        data: {
+          issuedPDAs: [],
+        },
+      };
+      jest
+        .spyOn(service as any, 'request')
+        .mockReturnValueOnce(issuedPDACountResponse);
+      jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
+      returnValue = await service.getIssuedStakerPDAs();
+      // Assert
+      expect(returnValue).toEqual([]);
+    });
+
+    test('Should not add PDA if status is not Valid', async () => {
+      // Arrange
+      issuedPDACountResponse = {
+        data: { issuedPDAsCount: 1 },
+      };
+      PDAResponse = {
+        data: {
+          issuedPDAs: [
+            {
+              id: 'id',
+              status: 'Expired',
+              dataAsset: {
+                claim: {
+                  point: 4,
+                  pdaType: 'staker',
+                  pdaSubtype: 'Gateway',
+                  type: 'custodian',
+                },
+                owner: {
+                  gatewayId: 'gatewayID',
+                },
+              },
+            },
+          ],
+        },
+      };
+      jest
+        .spyOn(service as any, 'request')
+        .mockReturnValueOnce(issuedPDACountResponse);
+      jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
+      returnValue = await service.getIssuedStakerPDAs();
+      // Assert
+      expect(returnValue).toEqual([]);
+    });
+
+    test('Should store related PDAs', async () => {
+      issuedPDACountResponse = {
+        data: { issuedPDAsCount: 1 },
+      };
+      PDA = {
+        id: 'id',
+        status: 'Valid',
+        dataAsset: {
+          claim: {
+            point: 4,
+            pdaType: 'staker',
+            pdaSubtype: 'Gateway',
+            type: 'custodian',
+          },
+          owner: {
+            gatewayId: 'gatewayID',
+          },
+        },
+      };
+      PDAResponse = {
+        data: {
+          issuedPDAs: [PDA],
+        },
+      };
+      jest
+        .spyOn(service as any, 'request')
+        .mockReturnValueOnce(issuedPDACountResponse);
+      jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
+      returnValue = await service.getIssuedStakerPDAs();
+      expect(returnValue).toEqual([PDA]);
     });
   });
 });
