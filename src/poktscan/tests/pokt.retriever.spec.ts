@@ -1,10 +1,12 @@
 import { HttpModule, HttpService } from '@nestjs/axios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import { WinstonProvider } from '@common/winston/winston.provider';
-import { PoktScanRetriever } from '../pokt.retriever';
-import { of } from 'rxjs';
 import { AxiosResponse } from 'axios';
+import { defaultsDeep } from 'lodash';
+import { of } from 'rxjs';
+import { WinstonProvider } from '@common/winston/winston.provider';
+import { PoktScanNodePagination } from '../interfaces/pokt-scan.interface';
+import { PoktScanRetriever } from '../pokt.retriever';
 
 jest.mock('@common/winston/winston.provider');
 
@@ -86,6 +88,71 @@ describe('PoktScanRetriever', () => {
     test('Should return body from http response', () => {
       // Assert
       expect(returnValue).toEqual(axiosResponse.data);
+    });
+  });
+  describe('getPoktNodeGQL', () => {
+    test('Should be defined', () => {
+      expect(retriever['getPoktNodeGQL']).toBeDefined();
+    });
+
+    test('Should return getPoktNode graphQL query', () => {
+      expect(retriever['getPoktNodeGQL']()).toBe(
+        `
+    query ListPoktNode($cursor: ID) {
+      ListPoktNode(
+        pagination: {
+          cursor: $cursor
+          limit: 1500
+          sort: { property: "_id", direction: -1 }
+          filter: {
+            operator: AND
+            properties: [
+              { property: "status", operator: EQ, type: INT, value: "2" }
+            ]
+          }
+        }
+      ) {
+        items {
+          output_address
+          service_domain
+          custodial
+          tokens
+        }
+        pageInfo {
+          has_next
+          next
+        }
+      }
+    }`,
+      );
+    });
+  });
+
+  describe('nextPage', () => {
+    let poktScanNodePagination: PoktScanNodePagination;
+    let returnValue: string | null;
+    beforeEach(() => {
+      poktScanNodePagination = {
+        has_next: true,
+        next: 'returnValue',
+      };
+    });
+    test('Should be defined', () => {
+      expect(retriever['nextPage']).toBeDefined();
+    });
+
+    test('Should return pageInfo.next when pageInfo.has_next === true', () => {
+      returnValue = retriever['nextPage'](poktScanNodePagination);
+      expect(returnValue).toBe('returnValue');
+    });
+
+    test('Should return "null" when pageInfo.has_next === false', () => {
+      poktScanNodePagination = {
+        has_next: false,
+        next: 'returnValue',
+      };
+      returnValue = retriever['nextPage'](poktScanNodePagination);
+      expect(returnValue).toBe(null);
     });
   });
 });
