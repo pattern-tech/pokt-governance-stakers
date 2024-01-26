@@ -1,5 +1,4 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { async } from 'rxjs';
 import { DNSResolver } from '@common/DNS-lookup/dns.resolver';
 import { WinstonProvider } from '@common/winston/winston.provider';
 import { CorePDAsUpcomingActions } from 'src/core.interface';
@@ -80,6 +79,23 @@ describe('CoreService', () => {
       expect(coreService).toBeDefined();
     });
 
+    test('Should not add or update when resolvedGatewayID === false', async () => {
+      expect(
+        await coreService['getPDAsUpcomingActions'](
+          stakedNodesData,
+          validStakersPDAs,
+        ),
+      ).toEqual(actions);
+    });
+
+    test('Should not update actions when getGatewayIDFromDomain === false', async () => {
+      const result = await coreService['getPDAsUpcomingActions'](
+        stakedNodesData,
+        validStakersPDAs,
+      );
+      expect(result).toEqual(actions);
+    });
+
     test(`Should add PDA to 'update' when PDA.dataAsset.owner.gatewayId === resolvedGatewayID &&
 PDA.dataAsset.claim.pdaSubtype === 'Validator`, async () => {
       jest
@@ -95,8 +111,7 @@ PDA.dataAsset.claim.pdaSubtype === 'Validator`, async () => {
       expect(actions.update[0].point).toEqual(1000);
     });
 
-    test(`Should add PDA to 'add' when PDA.dataAsset.owner.gatewayId !== resolvedGatewayID ||
-PDA.dataAsset.claim.pdaSubtype !== 'Validator`, async () => {
+    test('Should add PDA when PDA is new', async () => {
       jest
         .spyOn(dnsResolver as any, 'getGatewayIDFromDomain')
         .mockImplementation(() => {
@@ -110,11 +125,11 @@ PDA.dataAsset.claim.pdaSubtype !== 'Validator`, async () => {
             claim: {
               point: 1000,
               pdaType: 'staker',
-              pdaSubtype: 'Gateway',
+              pdaSubtype: 'Validator',
               type: 'custodian',
             },
             owner: {
-              gatewayId: 'gatewayID',
+              gatewayId: 'gatewayid',
             },
           },
         },
@@ -125,36 +140,62 @@ PDA.dataAsset.claim.pdaSubtype !== 'Validator`, async () => {
       );
       expect(actions.add.length).toEqual(1);
       expect(actions.add[0].point).toEqual(1000);
+      expect(actions.add[0].owner_gateway_id).toEqual('gatewayID');
     });
 
-    test('Should not update actions when getGatewayIDFromDomain === false', async () => {
+    test('Should update when PDA exists', async () => {
       jest
         .spyOn(dnsResolver as any, 'getGatewayIDFromDomain')
         .mockImplementation(() => {
-          return false;
+          return 'gatewayID';
         });
-      const result = await coreService['getPDAsUpcomingActions'](
+      actions = await coreService['getPDAsUpcomingActions'](
         stakedNodesData,
         validStakersPDAs,
       );
-      expect(result).toEqual(actions);
+      expect(actions.update.length).toEqual(1);
+      expect(actions.update[0].pda_id).toEqual('pda_id');
+      expect(actions.update[0].point).toEqual(1000);
     });
 
-    //     test('should correctly handle existing PDA', async () => {
-    //       jest
-    //         .spyOn(dnsResolver as any, 'getGatewayIDFromDomain')
-    //         .mockImplementation(() => {
-    //           return 'gatewayID';
-    //         });
-    //       const result = await coreService['getPDAsUpcomingActions'](
-    //         stakedNodesData,
-    //         validStakersPDAs,
-    //       );
-    //       expect(result.add).toHaveLength(1);
-    //       expect(result.add[0].point).toEqual(1000);
-    //       expect(result.add[0].node_type).toEqual('custodian');
-    //       expect(result.add[0].pda_sub_type).toEqual('Validator');
-    //       expect(result.add[0].owner_gateway_id).toEqual('id');
-    // });
+    test('Should store related data correctly', async () => {
+      jest
+        .spyOn(dnsResolver as any, 'getGatewayIDFromDomain')
+        .mockImplementationOnce(() => {
+          return 'gatewayID';
+        });
+      jest
+        .spyOn(dnsResolver as any, 'getGatewayIDFromDomain')
+        .mockImplementationOnce(() => {
+          return 'gatewayid';
+        });
+      stakedNodesData = {
+        custodian: [
+          {
+            domain: 'domainGATEWAY_ID=gatewayID',
+            staked_amount: 1000,
+          },
+          {
+            domain: 'domainGATEWAY_ID=gatewayid',
+            staked_amount: 5000,
+          },
+        ],
+        non_custodian: [],
+      };
+
+      actions = await coreService['getPDAsUpcomingActions'](
+        stakedNodesData,
+        validStakersPDAs,
+      );
+      console.log(actions);
+      expect(actions.update.length).toBeGreaterThan(0);
+      expect(actions.update[0].point).toEqual(1000);
+      expect(actions.update[0].pda_id).toEqual('pda_id');
+      expect(actions.add.length).toBeGreaterThan(0);
+      expect(actions.add[0].node_type).toEqual('custodian');
+      expect(actions.add[0].point).toEqual(5000);
+      expect(actions.add[0].owner_gateway_id).toEqual('gatewayid');
+      expect(actions.add[0].pda_sub_type).toEqual('Validator');
+    });
   });
 });
