@@ -17,6 +17,8 @@ describe('CoreService', () => {
   let coreService: CoreService;
   let logger: WinstonProvider;
   let dnsResolver: DNSResolver;
+  let poktScanRetriever: PoktScanRetriever;
+  let pdaService: PDAService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -32,6 +34,8 @@ describe('CoreService', () => {
     coreService = module.get<CoreService>(CoreService);
     logger = module.get<WinstonProvider>(WinstonProvider);
     dnsResolver = module.get<DNSResolver>(DNSResolver);
+    poktScanRetriever = module.get<PoktScanRetriever>(PoktScanRetriever);
+    pdaService = module.get<PDAService>(PDAService);
 
     jest.clearAllMocks();
   });
@@ -94,21 +98,6 @@ describe('CoreService', () => {
         validStakersPDAs,
       );
       expect(result).toEqual(actions);
-    });
-
-    test(`Should add PDA to 'update' when PDA.dataAsset.owner.gatewayId === resolvedGatewayID &&
-PDA.dataAsset.claim.pdaSubtype === 'Validator`, async () => {
-      jest
-        .spyOn(dnsResolver as any, 'getGatewayIDFromDomain')
-        .mockImplementation(() => {
-          return 'gatewayID';
-        });
-      actions = await coreService['getPDAsUpcomingActions'](
-        stakedNodesData,
-        validStakersPDAs,
-      );
-      expect(actions.update.length).toEqual(1);
-      expect(actions.update[0].point).toEqual(1000);
     });
 
     test('Should add PDA when PDA is new', async () => {
@@ -187,7 +176,6 @@ PDA.dataAsset.claim.pdaSubtype === 'Validator`, async () => {
         stakedNodesData,
         validStakersPDAs,
       );
-      console.log(actions);
       expect(actions.update.length).toBeGreaterThan(0);
       expect(actions.update[0].point).toEqual(1000);
       expect(actions.update[0].pda_id).toEqual('pda_id');
@@ -196,6 +184,41 @@ PDA.dataAsset.claim.pdaSubtype === 'Validator`, async () => {
       expect(actions.add[0].point).toEqual(5000);
       expect(actions.add[0].owner_gateway_id).toEqual('gatewayid');
       expect(actions.add[0].pda_sub_type).toEqual('Validator');
+    });
+  });
+
+  describe('handler', () => {
+    test('Should be defined', () => {
+      expect(coreService['handler']).toBeDefined();
+    });
+    test('Should call getPDAsUpcomingActions with correct parameters', async () => {});
+
+    test('Should call issueNewStakerPDA and updateIssuedStakerPDAs with correct parameters', async () => {
+      jest
+        .spyOn(coreService as any, 'getPDAsUpcomingActions')
+        .mockResolvedValue({
+          add: [
+            {
+              point: 5000,
+              node_type: 'custodian',
+              pda_sub_type: 'Validator',
+              owner_gateway_id: 'gatewayid',
+            },
+          ],
+          update: [{ pda_id: 'pda_id', point: 1000 }],
+        });
+      await coreService.handler();
+      expect(pdaService.issueNewStakerPDA).toHaveBeenCalledWith([
+        {
+          point: 5000,
+          node_type: 'custodian',
+          pda_sub_type: 'Validator',
+          owner_gateway_id: 'gatewayid',
+        },
+      ]);
+      expect(pdaService.updateIssuedStakerPDAs).toHaveBeenCalledWith([
+        { pda_id: 'pda_id', point: 1000 },
+      ]);
     });
   });
 });
