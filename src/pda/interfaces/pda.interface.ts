@@ -18,6 +18,11 @@ interface PDAClaimBase<Type extends PDAType> {
 
 interface StakerPDAClaim {
   type: StakerPDAType;
+  serviceDomain: string;
+  wallets: Array<{
+    address: string;
+    amount: number;
+  }>;
 }
 export interface IssuedPDA {
   id: string;
@@ -68,6 +73,7 @@ export interface IssueNewStakerPDAVariables {
   org_gateway_id: string;
   data_model_id: string;
   owner: string;
+  owner_type: 'GATEWAY_ID' | 'POKT';
   claim: PDAClaimBase<'staker'> & StakerPDAClaim;
 }
 
@@ -81,7 +87,7 @@ export interface IssueNewStakerPDAResponse {
 
 export interface UpdateStakerPDAVariables {
   pda_id: string;
-  point: number;
+  claim: Partial<PDAClaimBase<'staker'> & StakerPDAClaim>;
 }
 
 export interface UpdateStakerPDAResponse {

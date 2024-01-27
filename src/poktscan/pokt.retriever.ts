@@ -66,6 +66,7 @@ export class PoktScanRetriever implements BaseRetriever<never, PoktScanOutput> {
         }
       ) {
         items {
+          address
           output_address
           service_domain
           custodial
@@ -103,23 +104,36 @@ export class PoktScanRetriever implements BaseRetriever<never, PoktScanOutput> {
 
   private serializer(nodeItems: Array<PoktScanNodeItem>): PoktScanOutput {
     const result: PoktScanOutput = {
-      custodian: [],
-      non_custodian: [],
+      custodian: {},
+      non_custodian: {},
     };
 
     for (let index = 0; index < nodeItems.length; index++) {
       const nodeItem = nodeItems[index];
 
       if (nodeItem.custodial === true) {
-        result.custodian.push({
+        const newItem = {
           domain: nodeItem.service_domain,
           staked_amount: nodeItem.tokens / 10 ** 6,
-        });
+          wallet_address: nodeItem.address,
+        };
+
+        if (nodeItem.service_domain in result.custodian) {
+          result.custodian[nodeItem.service_domain].push(newItem);
+        } else {
+          result.custodian[nodeItem.service_domain] = [newItem];
+        }
       } else {
-        result.non_custodian.push({
+        const newItem = {
           wallet_address: nodeItem.output_address,
           staked_amount: nodeItem.tokens / 10 ** 6,
-        });
+        };
+
+        if (nodeItem.output_address in result.non_custodian) {
+          result.non_custodian[nodeItem.output_address].push(newItem);
+        } else {
+          result.non_custodian[nodeItem.output_address] = [newItem];
+        }
       }
     }
 
