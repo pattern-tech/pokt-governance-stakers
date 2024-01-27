@@ -155,6 +155,7 @@ export class PDAService {
       $org_gateway_id: String!
       $data_model_id: String!
       $owner: String!
+      $owner_type: UserIdentifierType!
       $claim: JSON!
     ) {
       createPDA(
@@ -162,7 +163,7 @@ export class PDAService {
               dataModelId: $data_model_id
               title: "Pocket Network Staker"
               description: "Servicer or Validator Path"
-              owner: { type: GATEWAY_ID, value: $owner }
+              owner: { type: $owner_type, value: $owner }
               organization: { type: GATEWAY_ID, value: $org_gateway_id }
               claim: $claim
           }
@@ -183,12 +184,18 @@ export class PDAService {
       const variables: IssueNewStakerPDAVariables = {
         data_model_id: DATA_MODEL_ID,
         org_gateway_id: ORG_GATEWAY_ID,
-        owner: addAction.owner_gateway_id,
+        owner: addAction.owner,
+        owner_type:
+          addAction.node_type === 'non-custodian' ? 'POKT' : 'GATEWAY_ID',
         claim: {
           pdaSubtype: addAction.pda_sub_type,
           pdaType: 'staker',
           type: addAction.node_type,
           point: addAction.point,
+          ...(addAction.node_type === 'custodian'
+            ? { serviceDomain: addAction.serviceDomain }
+            : null),
+          wallets: addAction.wallets,
         },
       };
 
@@ -198,8 +205,8 @@ export class PDAService {
 
   private getUpdateStakerPdaGQL() {
     return `
-    mutation updatePDA($PDA_ID: String!, $point: Int!) {
-      updatePDA(input: { id: $PDA_ID, claim: { point: $point } }) {
+    mutation updatePDA($PDA_ID: String!, $claim: JSON!) {
+      updatePDA(input: { id: $PDA_ID, claim: $claim }) {
           id
       }
     }`;
@@ -213,7 +220,10 @@ export class PDAService {
 
       const variables: UpdateStakerPDAVariables = {
         pda_id: updateAction.pda_id,
-        point: updateAction.point,
+        claim: {
+          point: updateAction.point,
+          ...(updateAction.wallets ? { wallets: updateAction.wallets } : null),
+        },
       };
 
       await this.request<UpdateStakerPDAResponse>(query, variables);
