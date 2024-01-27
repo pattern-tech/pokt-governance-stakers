@@ -25,9 +25,9 @@ export class DNSResolver {
 
       for (let idx = 0; idx < records.length; idx++) {
         const record = records[idx];
-        const [identifier, value] = record.split('=');
+        const [identifier, value] = record.split(/=(.*)/, 2);
 
-        if (identifier === 'GATEWAY_ID') {
+        if (identifier === 'GATEWAY_ID' && value?.length > 0) {
           return value;
         }
       }
