@@ -540,7 +540,7 @@ describe('PDAService', () => {
             serviceDomain: 'example.com',
             wallets: [
               {
-                address: '0xabcdef123456789',
+                address: 'address',
                 amount: 100,
               },
             ],
@@ -576,9 +576,9 @@ describe('PDAService', () => {
           .mockReturnValueOnce(issueNewStakerPDAResponse);
         jest
           .spyOn(service as any, 'getUpdateStakerPdaGQL')
-          .mockReturnValue('mutationCreatePDA');
+          .mockReturnValue('mutationUpdatePDA');
         await service.updateIssuedStakerPDAs(updateActions);
-        expect(service['request']).toHaveBeenCalledWith('mutationCreatePDA', {
+        expect(service['request']).toHaveBeenCalledWith('mutationUpdatePDA', {
           pda_id: 'id',
           claim: {
             point: 10,
@@ -591,7 +591,7 @@ describe('PDAService', () => {
           },
         });
       });
-      test('Should call method request with correct parameters when wallet is not defined', async () => {
+      test('Should call request method with correct parameters when wallet is not defined', async () => {
         updateActions = [
           {
             pda_id: 'id',
@@ -603,9 +603,9 @@ describe('PDAService', () => {
           .mockReturnValueOnce(issueNewStakerPDAResponse);
         jest
           .spyOn(service as any, 'getUpdateStakerPdaGQL')
-          .mockReturnValue('mutationCreatePDA');
+          .mockReturnValue('mutationUpdatePDA');
         await service.updateIssuedStakerPDAs(updateActions);
-        expect(service['request']).toHaveBeenCalledWith('mutationCreatePDA', {
+        expect(service['request']).toHaveBeenCalledWith('mutationUpdatePDA', {
           pda_id: 'id',
           claim: {
             point: 10,
