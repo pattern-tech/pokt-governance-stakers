@@ -2,8 +2,7 @@ import { HttpModule, HttpService } from '@nestjs/axios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AxiosResponse } from 'axios';
-import { toASCII } from 'punycode';
-import { async, of } from 'rxjs';
+import { of } from 'rxjs';
 import {
   IssueNewStakerPDAResponse,
   IssuedPDACountResponse,
@@ -13,7 +12,6 @@ import {
 } from '../interfaces/pda.interface';
 import { CoreAddAction, CoreUpdateAction } from 'src/core.interface';
 import { PDAService } from '../pda.service';
-import { query } from 'express';
 
 describe('PDAService', () => {
   let service: PDAService;
@@ -187,6 +185,33 @@ describe('PDAService', () => {
     let returnValue: Array<IssuedStakerPDA>;
     let PDAResponse: IssuedPDAsResponse;
     let PDA: IssuedStakerPDA;
+    beforeEach(() => {
+      issuedPDACountResponse = {
+        data: { issuedPDAsCount: 1 },
+      };
+      PDA = {
+        id: 'id',
+        status: 'Valid',
+        dataAsset: {
+          claim: {
+            point: 4,
+            pdaType: 'staker',
+            pdaSubtype: 'Gateway',
+            type: 'custodian',
+            serviceDomain: '',
+            wallets: [
+              {
+                address: 'address',
+                amount: 1,
+              },
+            ],
+          },
+          owner: {
+            gatewayId: 'gatewayID',
+          },
+        },
+      };
+    });
     test('Should be defined', () => {
       expect(service.getIssuedStakerPDAs).toBeDefined();
     });
@@ -212,9 +237,6 @@ describe('PDAService', () => {
 
     test('Should not add PDA if status is not Valid', async () => {
       // Arrange
-      issuedPDACountResponse = {
-        data: { issuedPDAsCount: 1 },
-      };
       PDAResponse = {
         data: {
           issuedPDAs: [
@@ -227,6 +249,13 @@ describe('PDAService', () => {
                   pdaType: 'staker',
                   pdaSubtype: 'Gateway',
                   type: 'custodian',
+                  serviceDomain: '',
+                  wallets: [
+                    {
+                      address: 'address',
+                      amount: 1,
+                    },
+                  ],
                 },
                 owner: {
                   gatewayId: 'gatewayID',
@@ -246,9 +275,6 @@ describe('PDAService', () => {
     });
     test('Should not add PDA if pdaType is not staker', async () => {
       // Arrange
-      issuedPDACountResponse = {
-        data: { issuedPDAsCount: 1 },
-      };
       PDAResponse = {
         data: {
           issuedPDAs: [
@@ -279,24 +305,6 @@ describe('PDAService', () => {
     });
 
     test('Should store related PDAs', async () => {
-      issuedPDACountResponse = {
-        data: { issuedPDAsCount: 1 },
-      };
-      PDA = {
-        id: 'id',
-        status: 'Valid',
-        dataAsset: {
-          claim: {
-            point: 4,
-            pdaType: 'staker',
-            pdaSubtype: 'Gateway',
-            type: 'custodian',
-          },
-          owner: {
-            gatewayId: 'gatewayID',
-          },
-        },
-      };
       PDAResponse = {
         data: {
           issuedPDAs: [PDA],
@@ -309,25 +317,8 @@ describe('PDAService', () => {
       returnValue = await service.getIssuedStakerPDAs();
       expect(returnValue).toEqual([PDA]);
     });
+
     test('Should call request method two times for each PDA', async () => {
-      issuedPDACountResponse = {
-        data: { issuedPDAsCount: 1 },
-      };
-      PDA = {
-        id: 'id',
-        status: 'Valid',
-        dataAsset: {
-          claim: {
-            point: 4,
-            pdaType: 'staker',
-            pdaSubtype: 'Gateway',
-            type: 'custodian',
-          },
-          owner: {
-            gatewayId: 'gatewayID',
-          },
-        },
-      };
       PDAResponse = {
         data: {
           issuedPDAs: [PDA],
@@ -340,24 +331,10 @@ describe('PDAService', () => {
       await service.getIssuedStakerPDAs();
       expect(service['request']).toHaveBeenCalledTimes(2);
     });
+
     test('Should check all PDAs and collect correct ones', async () => {
       issuedPDACountResponse = {
         data: { issuedPDAsCount: 2 },
-      };
-      PDA = {
-        id: 'id',
-        status: 'Valid',
-        dataAsset: {
-          claim: {
-            point: 4,
-            pdaType: 'staker',
-            pdaSubtype: 'Gateway',
-            type: 'custodian',
-          },
-          owner: {
-            gatewayId: 'gatewayID',
-          },
-        },
       };
       const fakePDA: any = {
         id: 'id',
@@ -405,6 +382,7 @@ describe('PDAService', () => {
       $org_gateway_id: String!
       $data_model_id: String!
       $owner: String!
+      $owner_type: UserIdentifierType!
       $claim: JSON!
     ) {
       createPDA(
@@ -412,7 +390,7 @@ describe('PDAService', () => {
               dataModelId: $data_model_id
               title: "Pocket Network Staker"
               description: "Servicer or Validator Path"
-              owner: { type: GATEWAY_ID, value: $owner }
+              owner: { type: $owner_type, value: $owner }
               organization: { type: GATEWAY_ID, value: $org_gateway_id }
               claim: $claim
           }
@@ -440,9 +418,17 @@ describe('PDAService', () => {
           point: 1,
           pda_sub_type: 'Gateway',
           node_type: 'custodian',
-          owner_gateway_id: 'is',
+          owner: 'owner',
+          serviceDomain: '',
+          wallets: [
+            {
+              address: '',
+              amount: 1,
+            },
+          ],
         },
       ];
+      jest.spyOn(config, 'get').mockReturnValue('');
     });
     test('Should be defined', () => {
       expect(service.issueNewStakerPDA).toBeDefined();
@@ -453,51 +439,179 @@ describe('PDAService', () => {
         .mockReturnValueOnce(issueNewStakerPDAResponse);
       await service.issueNewStakerPDA(addActions);
       expect(service['request']).toHaveBeenCalledTimes(addActions.length);
-      expect(service['request']).toHaveBeenCalledTimes(1);
     });
-  });
+    test('Should call method request with correct parameters', async () => {
+      jest
+        .spyOn(service as any, 'request')
+        .mockReturnValueOnce(issueNewStakerPDAResponse);
+      jest
+        .spyOn(service as any, 'getIssueStakerPdaGQL')
+        .mockReturnValue('mutationCreatePDA');
+      await service.issueNewStakerPDA(addActions);
+      expect(service['request']).toHaveBeenCalledWith('mutationCreatePDA', {
+        data_model_id: '',
+        org_gateway_id: '',
+        owner: 'owner',
+        owner_type: 'GATEWAY_ID',
+        claim: {
+          pdaSubtype: 'Gateway',
+          pdaType: 'staker',
+          type: 'custodian',
+          point: 1,
+          serviceDomain: '',
+          wallets: [
+            {
+              address: '',
+              amount: 1,
+            },
+          ],
+        },
+      });
+    });
+    test(`Should set 'owner_type' ='POKT' and ignore 'serviceDomain' when 'node_type' = 'non-custodian'`, async () => {
+      addActions = [
+        {
+          point: 1,
+          pda_sub_type: 'Gateway',
+          node_type: 'non-custodian',
+          owner: 'owner',
+          wallets: [
+            {
+              address: '',
+              amount: 1,
+            },
+          ],
+        },
+      ];
+      jest
+        .spyOn(service as any, 'request')
+        .mockReturnValueOnce(issueNewStakerPDAResponse);
+      jest
+        .spyOn(service as any, 'getIssueStakerPdaGQL')
+        .mockReturnValue('mutationCreatePDA');
+      await service.issueNewStakerPDA(addActions);
+      expect(service['request']).toHaveBeenCalledWith('mutationCreatePDA', {
+        data_model_id: '',
+        org_gateway_id: '',
+        owner: 'owner',
+        owner_type: 'POKT',
+        claim: {
+          pdaSubtype: 'Gateway',
+          pdaType: 'staker',
+          type: 'non-custodian',
+          point: 1,
+          wallets: [
+            {
+              address: '',
+              amount: 1,
+            },
+          ],
+        },
+      });
+    });
 
-  describe('getUpdateStakerPdaGQL', () => {
-    test('Should be defined', () => {
-      expect(service['getUpdateStakerPdaGQL']).toBeDefined();
-    });
-    test('Should return getUpdateStakerPda graphQL query', () => {
-      expect(service['getUpdateStakerPdaGQL']()).toBe(
-        `
-    mutation updatePDA($PDA_ID: String!, $point: Int!) {
-      updatePDA(input: { id: $PDA_ID, claim: { point: $point } }) {
+    describe('getUpdateStakerPdaGQL', () => {
+      test('Should be defined', () => {
+        expect(service['getUpdateStakerPdaGQL']).toBeDefined();
+      });
+      test('Should return getUpdateStakerPda graphQL query', () => {
+        expect(service['getUpdateStakerPdaGQL']()).toBe(
+          `
+    mutation updatePDA($PDA_ID: String!, $claim: JSON!) {
+      updatePDA(input: { id: $PDA_ID, claim: $claim }) {
           id
       }
     }`,
-      );
+        );
+      });
     });
-  });
 
-  describe('updateIssuedStakerPDAs', () => {
-    let updateActions: Array<CoreUpdateAction>;
-    let updateStakerPDAVariables: UpdateStakerPDAVariables;
-    beforeEach(() => {
-      updateStakerPDAVariables = {
-        pda_id: 'id',
-        point: 1,
-      };
-      updateActions = [
-        {
+    describe('updateIssuedStakerPDAs', () => {
+      let updateActions: Array<CoreUpdateAction>;
+      let updateStakerPDAVariables: UpdateStakerPDAVariables;
+      beforeEach(() => {
+        updateStakerPDAVariables = {
           pda_id: 'id',
-          point: 1,
-        },
-      ];
-    });
-    test('Should be defined', () => {
-      expect(service.updateIssuedStakerPDAs).toBeDefined();
-    });
-    test('Should update staker PDAs', async () => {
-      jest
-        .spyOn(service as any, 'request')
-        .mockReturnValueOnce(updateStakerPDAVariables);
-      await service.updateIssuedStakerPDAs(updateActions);
-      expect(service['request']).toHaveBeenCalledTimes(updateActions.length);
-      expect(service['request']).toHaveBeenCalledTimes(1);
+          claim: {
+            point: 3,
+            pdaType: 'staker',
+            pdaSubtype: 'Validator',
+            type: 'non-custodian',
+            serviceDomain: 'example.com',
+            wallets: [
+              {
+                address: '0xabcdef123456789',
+                amount: 100,
+              },
+            ],
+          },
+        };
+        updateActions = [
+          {
+            pda_id: 'id',
+            point: 10,
+            wallets: [
+              {
+                address: 'address',
+                amount: 100,
+              },
+            ],
+          },
+        ];
+      });
+      test('Should be defined', () => {
+        expect(service.updateIssuedStakerPDAs).toBeDefined();
+      });
+      test('Should update staker PDAs', async () => {
+        jest
+          .spyOn(service as any, 'request')
+          .mockReturnValueOnce(updateStakerPDAVariables);
+        await service.updateIssuedStakerPDAs(updateActions);
+        expect(service['request']).toHaveBeenCalledTimes(updateActions.length);
+        expect(service['request']).toHaveBeenCalledTimes(1);
+      });
+      test('Should call method request with correct parameters', async () => {
+        jest
+          .spyOn(service as any, 'request')
+          .mockReturnValueOnce(issueNewStakerPDAResponse);
+        jest
+          .spyOn(service as any, 'getUpdateStakerPdaGQL')
+          .mockReturnValue('mutationCreatePDA');
+        await service.updateIssuedStakerPDAs(updateActions);
+        expect(service['request']).toHaveBeenCalledWith('mutationCreatePDA', {
+          pda_id: 'id',
+          claim: {
+            point: 10,
+            wallets: [
+              {
+                address: 'address',
+                amount: 100,
+              },
+            ],
+          },
+        });
+      });
+      test('Should call method request with correct parameters when wallet is not defined', async () => {
+        updateActions = [
+          {
+            pda_id: 'id',
+            point: 10,
+          },
+        ];
+        jest
+          .spyOn(service as any, 'request')
+          .mockReturnValueOnce(issueNewStakerPDAResponse);
+        jest
+          .spyOn(service as any, 'getUpdateStakerPdaGQL')
+          .mockReturnValue('mutationCreatePDA');
+        await service.updateIssuedStakerPDAs(updateActions);
+        expect(service['request']).toHaveBeenCalledWith('mutationCreatePDA', {
+          pda_id: 'id',
+          claim: {
+            point: 10,
+          },
+        });
+      });
     });
   });
 });

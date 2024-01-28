@@ -62,6 +62,13 @@ describe('CoreService', () => {
               pdaType: 'staker',
               pdaSubtype: 'Validator',
               type: 'custodian',
+              serviceDomain: '',
+              wallets: [
+                {
+                  address: 'address',
+                  amount: 1,
+                },
+              ],
             },
             owner: {
               gatewayId: 'gatewayID',
@@ -70,13 +77,23 @@ describe('CoreService', () => {
         },
       ];
       stakedNodesData = {
-        custodian: [
-          {
-            domain: 'domainGATEWAY_ID=gatewayID',
-            staked_amount: 1000,
-          },
-        ],
-        non_custodian: [],
+        custodian: {
+          someKey: [
+            {
+              domain: 'domainGATEWAY_ID=gatewayID',
+              staked_amount: 1000,
+              wallet_address: 'address',
+            },
+          ],
+        },
+        non_custodian: {
+          someOtherKey: [
+            {
+              staked_amount: 1000,
+              wallet_address: 'address',
+            },
+          ],
+        },
       };
     });
     test('Should be defined', () => {
