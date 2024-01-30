@@ -378,7 +378,6 @@ describe('PoktScanRetriever', () => {
         },
       ];
       returnValue = retriever['serializer'](nodeItems);
-      console.log(returnValue);
       expect(returnValue).toEqual({
         custodian: {},
         non_custodian: {
