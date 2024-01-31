@@ -1,48 +1,40 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { result } from 'lodash';
-import { async } from 'rxjs';
 import { DNSResolver } from '@common/DNS-lookup/dns.resolver';
-import { WinstonProvider } from '@common/winston/winston.provider';
 import { CorePDAsUpcomingActions } from '../core.interface';
 import { PoktScanOutput } from '../poktscan/interfaces/pokt-scan.interface';
 import { IssuedStakerPDA } from 'src/pda/interfaces/pda.interface';
 import { CoreService } from '../core.service';
 import { PDAService } from '../pda/pda.service';
 import { PoktScanRetriever } from '../poktscan/pokt.retriever';
-import exp from 'constants';
 
-jest.mock('@common/winston/winston.provider');
+// Mock the PDAService
 jest.mock('../pda/pda.service');
+
+// Mock the PoktScanRetriever
 jest.mock('../poktscan/pokt.retriever');
+
+// Mock the DNSResolver
 jest.mock('@common/DNS-lookup/dns.resolver');
 
+// Describe the test suite for the CoreService
 describe('CoreService', () => {
   let coreService: CoreService;
-  let logger: WinstonProvider;
   let dnsResolver: DNSResolver;
-  let poktScanRetriever: PoktScanRetriever;
   let pdaService: PDAService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        CoreService,
-        PDAService,
-        PoktScanRetriever,
-        WinstonProvider,
-        DNSResolver,
-      ],
+      providers: [CoreService, PDAService, PoktScanRetriever, DNSResolver],
     }).compile();
 
     coreService = module.get<CoreService>(CoreService);
-    logger = module.get<WinstonProvider>(WinstonProvider);
     dnsResolver = module.get<DNSResolver>(DNSResolver);
-    poktScanRetriever = module.get<PoktScanRetriever>(PoktScanRetriever);
     pdaService = module.get<PDAService>(PDAService);
 
     jest.clearAllMocks();
   });
   test('Should be defined', () => {
+    // Assert
     expect(coreService).toBeDefined();
   });
 
@@ -95,10 +87,11 @@ describe('CoreService', () => {
     });
 
     test('Should be defined', () => {
+      // Assert
       expect(coreService['setCustodianActions']).toBeDefined();
     });
-    // Should update PDA with point 0 when PDA suits with no condition
     test('Should update PDA with point 0 when PDA suits with no service domain', async () => {
+      // Arrange
       stakedNodesData = {
         custodian: {
           'some domain which is different with PDA service domain ': [
@@ -111,11 +104,13 @@ describe('CoreService', () => {
         },
         non_custodian: {},
       };
+      // Act
       await coreService['setCustodianActions'](
         stakedNodesData,
         validStakersPDAs,
         actions,
       );
+      // Assert
       expect(actions.update).toEqual([
         {
           pda_id: 'pda_id',
@@ -124,15 +119,96 @@ describe('CoreService', () => {
         },
       ]);
     });
-
-    // Should I check other false condirions??!
-
-    test('Should updated PDA with correct parameters when PDA already exists', async () => {
+    test('Should update PDA with point 0 when PDA suits with no gatewayID', async () => {
+      // Arrange
+      validStakersPDAs = [
+        {
+          id: 'pda_id',
+          status: 'Valid',
+          dataAsset: {
+            claim: {
+              point: 10,
+              pdaType: 'staker',
+              pdaSubtype: 'Validator',
+              type: 'custodian',
+              serviceDomain: 'example.comGATEWAY_ID=gatewayID',
+              wallets: [
+                {
+                  address: 'address',
+                  amount: 1,
+                },
+              ],
+            },
+            owner: {
+              gatewayId: 'someOtherID',
+            },
+          },
+        },
+      ];
+      // Act
       await coreService['setCustodianActions'](
         stakedNodesData,
         validStakersPDAs,
         actions,
       );
+      // Assert
+      expect(actions.update).toEqual([
+        {
+          pda_id: 'pda_id',
+          point: 0,
+          wallets: [],
+        },
+      ]);
+    });
+    test('Should update PDA with point 0 when pdaSubtype is not "Validator"', async () => {
+      // Arrange
+      validStakersPDAs = [
+        {
+          id: 'pda_id',
+          status: 'Valid',
+          dataAsset: {
+            claim: {
+              point: 10,
+              pdaType: 'staker',
+              pdaSubtype: 'Gateway',
+              type: 'custodian',
+              serviceDomain: 'example.comGATEWAY_ID=gatewayID',
+              wallets: [
+                {
+                  address: 'address',
+                  amount: 1,
+                },
+              ],
+            },
+            owner: {
+              gatewayId: 'gatewayID',
+            },
+          },
+        },
+      ];
+      // Act
+      await coreService['setCustodianActions'](
+        stakedNodesData,
+        validStakersPDAs,
+        actions,
+      );
+      // Assert
+      expect(actions.update).toEqual([
+        {
+          pda_id: 'pda_id',
+          point: 0,
+          wallets: [],
+        },
+      ]);
+    });
+    test('Should updated PDA with correct parameters when PDA already exists', async () => {
+      // Act
+      await coreService['setCustodianActions'](
+        stakedNodesData,
+        validStakersPDAs,
+        actions,
+      );
+      // Assert
       expect(actions.update).toEqual([
         {
           pda_id: 'pda_id',
@@ -142,12 +218,15 @@ describe('CoreService', () => {
       ]);
     });
     test('Should add PDA with correct parameters when PDA is new', async () => {
+      // Arrange
       validStakersPDAs = [];
+      // Act
       await coreService['setCustodianActions'](
         stakedNodesData,
         validStakersPDAs,
         actions,
       );
+      // Assert
       expect(actions.add).toEqual([
         {
           point: 1000,
@@ -160,6 +239,7 @@ describe('CoreService', () => {
       ]);
     });
     test('Should sum staked amount and add all wallets correctly for custodian', async () => {
+      // Arrange
       stakedNodesData = {
         custodian: {
           'example.comGATEWAY_ID=gatewayID': [
@@ -177,11 +257,13 @@ describe('CoreService', () => {
         },
         non_custodian: {},
       };
+      // Act
       await coreService['setCustodianActions'](
         stakedNodesData,
         validStakersPDAs,
         actions,
       );
+      // Assert
       expect(actions.update).toEqual([
         {
           pda_id: 'pda_id',
@@ -194,26 +276,30 @@ describe('CoreService', () => {
       ]);
     });
     test('Should call getGatewayIDFromDomain method with correct parameter', async () => {
+      // Act
       await coreService['setCustodianActions'](
         stakedNodesData,
         validStakersPDAs,
         actions,
       );
+      // Assert
       expect(dnsResolver['getGatewayIDFromDomain']).toHaveBeenCalledWith(
         'example.comGATEWAY_ID=gatewayID',
       );
       expect(dnsResolver['getGatewayIDFromDomain']).toHaveBeenCalledTimes(2);
     });
-    // as last test
     test('Should update PDA with point 0 when GATEWAY_ID is not defined', async () => {
+      // Arrange
       jest
         .spyOn(dnsResolver as any, 'getGatewayIDFromDomain')
         .mockReturnValue(false);
+      // Act
       await coreService['setCustodianActions'](
         stakedNodesData,
         validStakersPDAs,
         actions,
       );
+      // Assert
       expect(actions.update).toEqual([
         {
           pda_id: 'pda_id',
@@ -223,6 +309,7 @@ describe('CoreService', () => {
       ]);
     });
   });
+
   describe('setNonCustodianActions', () => {
     let stakedNodesData: PoktScanOutput;
     let validStakersPDAs: Array<IssuedStakerPDA>;
@@ -270,40 +357,17 @@ describe('CoreService', () => {
       };
     });
     test('Should be defined', () => {
+      // Assert
       expect(coreService['setNonCustodianActions']).toBeDefined();
     });
-    test('Should update PDA with point 0 when PDA is Invaid', async () => {
-      stakedNodesData = {
-        custodian: {},
-        non_custodian: {
-          'someOtherExample.com': [
-            {
-              staked_amount: 1000,
-              wallet_address: 'wallet_address',
-            },
-          ],
-        },
-      };
-      await coreService['setNonCustodianActions'](
-        stakedNodesData,
-        validStakersPDAs,
-        actions,
-      );
-      expect(actions.update).toEqual([
-        {
-          pda_id: 'pda_id',
-          point: 0,
-        },
-      ]);
-    });
-    // Should I check other false condirions??!
-
     test('Should update PDA with correct parameters when PDA already exists', async () => {
+      // Act
       await coreService['setNonCustodianActions'](
         stakedNodesData,
         validStakersPDAs,
         actions,
       );
+      // Assert
       expect(actions.update).toEqual([
         {
           pda_id: 'pda_id',
@@ -317,13 +381,83 @@ describe('CoreService', () => {
         },
       ]);
     });
-    test('Shouls add PDA when PDA is new and Valid', async () => {
-      validStakersPDAs = [];
+    test('Should update PDA with point 0 when PDA is Invaid', async () => {
+      // Arrange
+      stakedNodesData = {
+        custodian: {},
+        non_custodian: {
+          'someOtherExample.com': [
+            {
+              staked_amount: 1000,
+              wallet_address: 'wallet_address',
+            },
+          ],
+        },
+      };
+      // Act
       await coreService['setNonCustodianActions'](
         stakedNodesData,
         validStakersPDAs,
         actions,
       );
+      // Assert
+      expect(actions.update).toEqual([
+        {
+          pda_id: 'pda_id',
+          point: 0,
+        },
+      ]);
+    });
+    test('Should update PDA with point 0 when address is not equal with "walletAddress"', async () => {
+      // Arrange
+      validStakersPDAs = [
+        {
+          id: 'pda_id',
+          status: 'Valid',
+          dataAsset: {
+            claim: {
+              point: 10,
+              pdaType: 'staker',
+              pdaSubtype: 'Validator',
+              type: 'non-custodian',
+              serviceDomain: 'example.com',
+              wallets: [
+                {
+                  address: 'someOtherWalletAddress',
+                  amount: 1000,
+                },
+              ],
+            },
+            owner: {
+              gatewayId: 'gatewayID',
+            },
+          },
+        },
+      ];
+      // Act
+      await coreService['setNonCustodianActions'](
+        stakedNodesData,
+        validStakersPDAs,
+        actions,
+      );
+      // Assert
+      expect(actions.update).toEqual([
+        {
+          pda_id: 'pda_id',
+          point: 0,
+        },
+      ]);
+    });
+    test('Shouls add PDA when PDA is new and Valid', async () => {
+      // Arrange
+      validStakersPDAs = [];
+      // Act
+      await coreService['setNonCustodianActions'](
+        stakedNodesData,
+        validStakersPDAs,
+        actions,
+      );
+      // Assert
       expect(actions.add).toEqual([
         {
           point: 1000,
@@ -340,6 +474,7 @@ describe('CoreService', () => {
       ]);
     });
     test('Should sum staked amount and add all wallets correctly for non-custodian', async () => {
+      // Arrange
       stakedNodesData = {
         custodian: {},
         non_custodian: {
@@ -359,11 +494,13 @@ describe('CoreService', () => {
           ],
         },
       };
+      // Act
       await coreService['setNonCustodianActions'](
         stakedNodesData,
         validStakersPDAs,
         actions,
       );
+      // Assert
       expect(actions.update).toEqual([
         {
           pda_id: 'pda_id',
@@ -386,6 +523,7 @@ describe('CoreService', () => {
       ]);
     });
   });
+
   describe('getPDAsUpcomingActions', () => {
     let stakedNodesData: PoktScanOutput;
     let validStakersPDAs: Array<IssuedStakerPDA>;
@@ -447,13 +585,16 @@ describe('CoreService', () => {
         .mockResolvedValue('');
     });
     test('Should be defined', () => {
+      // Assert
       expect(coreService['getPDAsUpcomingActions']).toBeDefined();
     });
     test('Should call setCustodianActions with correct parameters', async () => {
+      // Act
       await coreService['getPDAsUpcomingActions'](
         stakedNodesData,
         validStakersPDAs,
       );
+      // Assert
       expect(coreService['setCustodianActions']).toHaveBeenCalledWith(
         stakedNodesData,
         validStakersPDAs,
@@ -461,10 +602,12 @@ describe('CoreService', () => {
       );
     });
     test('Should call setNonCustodianActions with correct parameters', async () => {
+      // Act
       await coreService['getPDAsUpcomingActions'](
         stakedNodesData,
         validStakersPDAs,
       );
+      // Assert
       expect(coreService['setNonCustodianActions']).toHaveBeenCalledWith(
         stakedNodesData,
         validStakersPDAs,
@@ -472,6 +615,7 @@ describe('CoreService', () => {
       );
     });
     test('Should return actions', async () => {
+      // Assert
       expect(
         await coreService['getPDAsUpcomingActions'](
           stakedNodesData,
@@ -486,13 +630,17 @@ describe('CoreService', () => {
         add: [],
         update: [],
       });
-    })
+    });
     test('Should call issueNewStakerPDA with correct parameters', async () => {
+      // Act
       await coreService.handler();
+      // Assert
       expect(pdaService.issueNewStakerPDA).toHaveBeenCalledWith([]);
     });
     test('Should call updateIssuedStakerPDAs with correct parameters', async () => {
-       await coreService.handler();
+      // Act
+      await coreService.handler();
+      // Assert
       expect(pdaService.updateIssuedStakerPDAs).toHaveBeenCalledWith([]);
     });
   });

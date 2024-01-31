@@ -3,8 +3,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { WinstonProvider } from '@common/winston/winston.provider';
 import { AllExceptionsFilter } from '../all-exception.filter';
 
+// Mock the WinstonProvider
 jest.mock('@common/winston/winston.provider');
 
+// Describe the test suite for the AllExceptionsFilter
 describe('AllExceptionsFilter', () => {
   let filter: AllExceptionsFilter;
   let logger: WinstonProvider;
@@ -41,10 +43,10 @@ describe('AllExceptionsFilter', () => {
       // Assert
       expect(filter.handleUnknownError).toBeDefined();
     });
+
     test('Should handle unknown error and log it', () => {
       // Arrange
       const exception = new Error('Test error');
-      // Act
       filter.handleUnknownError(exception, hostMock, applicationRefMock);
       // Assert
       expect(applicationRefMock.isHeadersSent).toHaveBeenCalled();
@@ -62,12 +64,26 @@ describe('AllExceptionsFilter', () => {
       });
     });
 
-    test('should end the response if headers are already sent', () => {
+    test('Should end the response if headers are already sent and call error method from logger when exception is an object', () => {
       // Arrange
       const exception = new Error('Test error');
       applicationRefMock.isHeadersSent = jest.fn(() => true);
-      // Act
       filter.handleUnknownError(exception, hostMock, applicationRefMock);
+      // Assert
+      expect(applicationRefMock.end).toHaveBeenCalledWith(expect.anything());
+      expect(applicationRefMock.reply).not.toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledTimes(1);
+    });
+
+    test('Should end the response if headers are already sent and call error method from logger when exception is not an object', () => {
+      // Arrange
+      const exception = new Error('Test error');
+      applicationRefMock.isHeadersSent = jest.fn(() => true);
+      filter.handleUnknownError(
+        String(exception),
+        hostMock,
+        applicationRefMock,
+      );
       // Assert
       expect(applicationRefMock.end).toHaveBeenCalledWith(expect.anything());
       expect(applicationRefMock.reply).not.toHaveBeenCalled();

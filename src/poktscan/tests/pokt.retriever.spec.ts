@@ -12,8 +12,10 @@ import {
 } from '../interfaces/pokt-scan.interface';
 import { PoktScanRetriever } from '../pokt.retriever';
 
+// Mock the WinstonProvider
 jest.mock('@common/winston/winston.provider');
 
+// Describe the test suite for the PoktScanRetriever
 describe('PoktScanRetriever', () => {
   let retriever: PoktScanRetriever;
   let config: ConfigService;
@@ -35,6 +37,7 @@ describe('PoktScanRetriever', () => {
   });
 
   test('Should be defined', () => {
+    // Assert
     expect(retriever).toBeDefined();
   });
 
@@ -62,18 +65,19 @@ describe('PoktScanRetriever', () => {
     });
 
     test('Should be defined', () => {
+      // Assert
       expect(retriever['request']).toBeDefined();
     });
-
     test('Should call get method from config for POKT_SCAN_API_BASE_URL', () => {
+      // Assert
       expect(config.get).toHaveBeenCalledWith('POKT_SCAN_API_BASE_URL');
     });
-
     test('Should call get method from config for POKT_SCAN_API_TOKEN', () => {
+      // Assert
       expect(config.get).toHaveBeenCalledWith('POKT_SCAN_API_TOKEN');
     });
-
     test('Should call post from axios with the correct parameters', () => {
+      // Assert
       expect(axios.post).toHaveBeenCalledWith(
         '',
         {
@@ -90,7 +94,9 @@ describe('PoktScanRetriever', () => {
     });
 
     test('Should call debug from logger with correct parameters', async () => {
+      // Act
       await retriever['request'](query, variables);
+      // Assert
       expect(logger.debug).toHaveBeenCalledWith(
         'request method\n' +
           `input => ${JSON.stringify({ query, variables })}\n` +
@@ -101,18 +107,19 @@ describe('PoktScanRetriever', () => {
         PoktScanRetriever.name,
       );
     });
-
     test('Should return body from http response', () => {
+      // Assert
       expect(returnValue).toEqual(axiosResponse.data);
     });
   });
 
   describe('getPoktNodeGQL', () => {
     test('Should be defined', () => {
+      // Assert
       expect(retriever['getPoktNodeGQL']).toBeDefined();
     });
-
     test('Should return getPoktNode graphQL query', () => {
+      // Assert
       expect(retriever['getPoktNodeGQL']()).toBe(
         `
     query ListPoktNode($cursor: ID) {
@@ -158,20 +165,24 @@ describe('PoktScanRetriever', () => {
     });
 
     test('Should be defined', () => {
+      // Assert
       expect(retriever['nextPage']).toBeDefined();
     });
-
     test('Should return pageInfo.next when pageInfo.has_next === true', () => {
+      // Act
       returnValue = retriever['nextPage'](poktScanNodePagination);
+      // Assert
       expect(returnValue).toBe('returnValue');
     });
-
     test('Should return "null" when pageInfo.has_next === false', () => {
+      // Arrange
       poktScanNodePagination = {
         has_next: false,
         next: 'returnValue',
       };
+      // Act
       returnValue = retriever['nextPage'](poktScanNodePagination);
+      // Assert
       expect(returnValue).toBe(null);
     });
   });
@@ -218,11 +229,13 @@ describe('PoktScanRetriever', () => {
     });
 
     test('Should be defined', () => {
+      // Assert
       expect(retriever['getListNodeData']).toBeDefined();
     });
-
     test('Should retrieve node data successfully when nextPage is null', async () => {
+      // Arrange
       jest.spyOn(retriever as any, 'request').mockResolvedValueOnce(result);
+      // Assert
       expect(await retriever['getListNodeData']()).toEqual([
         {
           address: 'address',
@@ -234,11 +247,14 @@ describe('PoktScanRetriever', () => {
       ]);
     });
     test('Should call request method with correct parameters', async () => {
+      // Arrange
       jest
         .spyOn(retriever as any, 'request')
         .mockResolvedValueOnce(firstResult);
       jest.spyOn(retriever as any, 'request').mockResolvedValueOnce(result);
+      // Act
       await retriever['getListNodeData']();
+      // Assert
       expect(retriever['request']).toHaveBeenCalledWith('', {
         cursor: null,
       });
@@ -247,14 +263,15 @@ describe('PoktScanRetriever', () => {
       });
       expect(retriever['request']).toHaveBeenCalledTimes(2);
     });
-
     test('Should retrieve node data successfully when nextPage is not null', async () => {
+      // Arrange
       jest
         .spyOn(retriever as any, 'request')
         .mockResolvedValueOnce(firstResult);
       jest.spyOn(retriever as any, 'request').mockResolvedValueOnce(result);
-
+      // Act
       returnValue = await retriever['getListNodeData']();
+      // Assert
       expect(returnValue[1].address).toEqual('address');
       expect(returnValue[1].tokens).toEqual(1000000);
       expect(returnValue[1].custodial).toEqual(false);
@@ -281,11 +298,15 @@ describe('PoktScanRetriever', () => {
     });
 
     test('Should be defined', () => {
+      // Assert
       expect(retriever['serializer']).toBeDefined();
     });
 
-    test('Should add item to custodian when custodial === true', () => {
+    test(`Should create service_domain and add item to it 
+whenservice_domain is not in result.custodian and custodial === true`, () => {
+      // Act
       returnValue = retriever['serializer'](nodeItems);
+      // Assert
       expect(returnValue).toEqual({
         custodian: {
           service_domain: [
@@ -301,6 +322,7 @@ describe('PoktScanRetriever', () => {
     });
 
     test('Should add new item to available array when service_domain be in result.custodian', () => {
+      // Arrange
       nodeItems = [
         {
           address: 'address',
@@ -317,7 +339,9 @@ describe('PoktScanRetriever', () => {
           tokens: 6000000,
         },
       ];
+      // Act
       returnValue = retriever['serializer'](nodeItems);
+      // Assert
       expect(returnValue).toEqual({
         custodian: {
           service_domain: [
@@ -336,7 +360,9 @@ describe('PoktScanRetriever', () => {
         non_custodian: {},
       });
     });
-    test('Should add item to custodian when custodial !== true', () => {
+    test(`Should create output_address and add item to it 
+when output_address is not in result.non_custodian and custodial !== true`, () => {
+      // Arrange
       nodeItems = [
         {
           address: 'address',
@@ -346,7 +372,9 @@ describe('PoktScanRetriever', () => {
           tokens: 5000000,
         },
       ];
+      // Act
       returnValue = retriever['serializer'](nodeItems);
+      // Assert
       expect(returnValue).toEqual({
         custodian: {},
         non_custodian: {
@@ -359,8 +387,8 @@ describe('PoktScanRetriever', () => {
         },
       });
     });
-
-    test('Should add new item to available array when output_address be in result.custodian', () => {
+    test('Should add new item to available array when output_address be in result.non_custodian', () => {
+      // Arrange
       nodeItems = [
         {
           address: 'address',
@@ -377,7 +405,9 @@ describe('PoktScanRetriever', () => {
           tokens: 6000000,
         },
       ];
+      // Act
       returnValue = retriever['serializer'](nodeItems);
+      // Assert
       expect(returnValue).toEqual({
         custodian: {},
         non_custodian: {
@@ -396,6 +426,7 @@ describe('PoktScanRetriever', () => {
     });
 
     test('Should handle both custodian and non-custodian parameters together', () => {
+      // Arrange
       nodeItems = [
         {
           address: 'address1',
@@ -426,7 +457,9 @@ describe('PoktScanRetriever', () => {
           tokens: 4000000,
         },
       ];
+      // Act
       returnValue = retriever['serializer'](nodeItems);
+      // Assert
       expect(returnValue).toEqual({
         custodian: {
           service_domain: [
@@ -457,6 +490,7 @@ describe('PoktScanRetriever', () => {
       });
     });
   });
+
   describe('retrieve', () => {
     beforeEach(() => {
       jest.spyOn(retriever as any, 'getListNodeData').mockResolvedValueOnce([
@@ -477,11 +511,13 @@ describe('PoktScanRetriever', () => {
       ]);
     });
     test('Should be defined', () => {
+      // Assert
       expect(retriever.retrieve).toBeDefined();
     });
     test('should retrieve and serialize node data successfully', async () => {
+      // Act
       const result: PoktScanOutput = await retriever.retrieve();
-
+      // Assert
       expect(result).toEqual({
         custodian: {
           service_domain: [
@@ -504,8 +540,11 @@ describe('PoktScanRetriever', () => {
     });
 
     test('Should call serializer method with correct parameters', async () => {
+      // Arrange
       jest.spyOn(retriever as any, 'serializer').mockReturnValue({});
+      // Act
       await retriever.retrieve();
+      // Assert
       expect(retriever['serializer']).toHaveBeenCalledWith([
         {
           address: 'address3',

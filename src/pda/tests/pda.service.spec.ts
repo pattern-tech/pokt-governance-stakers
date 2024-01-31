@@ -13,6 +13,7 @@ import {
 import { CoreAddAction, CoreUpdateAction } from 'src/core.interface';
 import { PDAService } from '../pda.service';
 
+// Describe the test suite for the PDAService
 describe('PDAService', () => {
   let service: PDAService;
   let axios: HttpService;
@@ -60,21 +61,18 @@ describe('PDAService', () => {
       // Assert
       expect(service['request']).toBeDefined();
     });
-
     test('Should call get method from config', () => {
       // Assert
       expect(config.get).toHaveBeenCalledWith('MYGATEWAY_ENDPOINT_URL');
     });
-
     test('Should call get method from config', () => {
       // Assert
       expect(config.get).toHaveBeenCalledWith('MYGATEWAY_API_KEY');
     });
-
     test('Should call get method from config', () => {
+      // Assert
       expect(config.get).toHaveBeenCalledWith('MYGATEWAY_AUTHENTICATION_TOKEN');
     });
-
     test('Should call post from axios with the correct parameters', () => {
       // Assert
       expect(axios.post).toHaveBeenCalledWith(
@@ -105,6 +103,7 @@ describe('PDAService', () => {
       returnValue = service['getIssuedPDAsGQL']();
     });
     test('Should be defined', () => {
+      // Assert
       expect(service['getIssuedPDAsGQL']).toBeDefined();
     });
 
@@ -135,7 +134,7 @@ describe('PDAService', () => {
   describe('getIssuedPDACountGQL', () => {
     let returnValue: string;
 
-    beforeEach(() => {
+    beforeAll(() => {
       returnValue = service['getIssuedPDACountGQL']();
     });
 
@@ -157,12 +156,15 @@ describe('PDAService', () => {
     });
   });
   describe('pagination', () => {
+    test('Should handle the case when max is 0', () => {
+      // Assert
+      expect(service['pagination'](0)).toEqual([{ take: 0, skip: 0 }]);
+    });
     test("Should return pagination when max's value less or equal that 100", () => {
       // Assert
       expect(service['pagination'](99)).toEqual([{ take: 99, skip: 0 }]);
       expect(service['pagination'](100)).toEqual([{ take: 100, skip: 0 }]);
     });
-
     test("Should return pagination when max's value greater that 100", () => {
       // Assert
       expect(service['pagination'](350)).toEqual([
@@ -213,10 +215,10 @@ describe('PDAService', () => {
       };
     });
     test('Should be defined', () => {
+      // Assert
       expect(service.getIssuedStakerPDAs).toBeDefined();
     });
-
-    test('Should return an empty array when countResponse is 0', async () => {
+    test('Should return an empty array when issuedPDAsCount is 0', async () => {
       // Arrange
       issuedPDACountResponse = {
         data: { issuedPDAsCount: 0 },
@@ -230,11 +232,11 @@ describe('PDAService', () => {
         .spyOn(service as any, 'request')
         .mockReturnValueOnce(issuedPDACountResponse);
       jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
+      // Act
       returnValue = await service.getIssuedStakerPDAs();
       // Assert
       expect(returnValue).toEqual([]);
     });
-
     test('Should not add PDA if status is not Valid', async () => {
       // Arrange
       PDAResponse = {
@@ -269,6 +271,7 @@ describe('PDAService', () => {
         .spyOn(service as any, 'request')
         .mockReturnValueOnce(issuedPDACountResponse);
       jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
+      // Act
       returnValue = await service.getIssuedStakerPDAs();
       // Assert
       expect(returnValue).toEqual([]);
@@ -299,12 +302,13 @@ describe('PDAService', () => {
         .spyOn(service as any, 'request')
         .mockReturnValueOnce(issuedPDACountResponse);
       jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
+      // Act
       returnValue = await service.getIssuedStakerPDAs();
       // Assert
       expect(returnValue).toEqual([]);
     });
-
     test('Should store related PDAs', async () => {
+      // Arrange
       PDAResponse = {
         data: {
           issuedPDAs: [PDA],
@@ -314,11 +318,13 @@ describe('PDAService', () => {
         .spyOn(service as any, 'request')
         .mockReturnValueOnce(issuedPDACountResponse);
       jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
+      // Act
       returnValue = await service.getIssuedStakerPDAs();
+      // Assert
       expect(returnValue).toEqual([PDA]);
     });
-
     test('Should call request method two times for each PDA', async () => {
+      // Arrange
       PDAResponse = {
         data: {
           issuedPDAs: [PDA],
@@ -328,11 +334,13 @@ describe('PDAService', () => {
         .spyOn(service as any, 'request')
         .mockReturnValueOnce(issuedPDACountResponse);
       jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
+      // act
       await service.getIssuedStakerPDAs();
+      // Assert
       expect(service['request']).toHaveBeenCalledTimes(2);
     });
-
     test('Should check all PDAs and collect correct ones', async () => {
+      // Arrange
       issuedPDACountResponse = {
         data: { issuedPDAsCount: 2 },
       };
@@ -360,12 +368,16 @@ describe('PDAService', () => {
         .spyOn(service as any, 'request')
         .mockReturnValueOnce(issuedPDACountResponse);
       jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
+      // Act
       await service.getIssuedStakerPDAs();
+      // Rearrange
       jest
         .spyOn(service as any, 'request')
         .mockReturnValueOnce(issuedPDACountResponse);
       jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
+      //React
       returnValue = await service.getIssuedStakerPDAs();
+      // Assert
       expect(returnValue).toEqual([PDA]);
       expect(service['request']).toHaveBeenCalledTimes(4);
     });
@@ -373,9 +385,11 @@ describe('PDAService', () => {
 
   describe('getIssueStakerPdaGQL', () => {
     test('Should be defined', () => {
+      // Assert
       expect(service['getIssuedStakerPDAs']).toBeDefined();
     });
     test('Should return getIssueStakerPda graphQL query', () => {
+      // Assert
       expect(service['getIssueStakerPdaGQL']()).toBe(
         `
     mutation CreatePDA(
@@ -419,7 +433,7 @@ describe('PDAService', () => {
           pda_sub_type: 'Gateway',
           node_type: 'custodian',
           owner: 'owner',
-          serviceDomain: '',
+          serviceDomain: 'example.com',
           wallets: [
             {
               address: '',
@@ -431,44 +445,22 @@ describe('PDAService', () => {
       jest.spyOn(config, 'get').mockReturnValue('');
     });
     test('Should be defined', () => {
+      // Assert
       expect(service.issueNewStakerPDA).toBeDefined();
     });
     test('Should issue new staker PDAs', async () => {
+      // Arrange
       jest
         .spyOn(service as any, 'request')
         .mockReturnValueOnce(issueNewStakerPDAResponse);
+      // Act
       await service.issueNewStakerPDA(addActions);
+      // Assert
       expect(service['request']).toHaveBeenCalledTimes(addActions.length);
     });
-    test('Should call method request with correct parameters', async () => {
-      jest
-        .spyOn(service as any, 'request')
-        .mockReturnValueOnce(issueNewStakerPDAResponse);
-      jest
-        .spyOn(service as any, 'getIssueStakerPdaGQL')
-        .mockReturnValue('mutationCreatePDA');
-      await service.issueNewStakerPDA(addActions);
-      expect(service['request']).toHaveBeenCalledWith('mutationCreatePDA', {
-        data_model_id: '',
-        org_gateway_id: '',
-        owner: 'owner',
-        owner_type: 'GATEWAY_ID',
-        claim: {
-          pdaSubtype: 'Gateway',
-          pdaType: 'staker',
-          type: 'custodian',
-          point: 1,
-          serviceDomain: '',
-          wallets: [
-            {
-              address: '',
-              amount: 1,
-            },
-          ],
-        },
-      });
-    });
-    test(`Should set 'owner_type' ='POKT' and ignore 'serviceDomain' when 'node_type' = 'non-custodian'`, async () => {
+    test(`Should set 'owner_type' ='POKT' and ignore 'serviceDomain' when 'node_type' = 'non-custodian' 
+and call method request with correct parameters`, async () => {
+      // Arrange
       addActions = [
         {
           point: 1,
@@ -489,7 +481,9 @@ describe('PDAService', () => {
       jest
         .spyOn(service as any, 'getIssueStakerPdaGQL')
         .mockReturnValue('mutationCreatePDA');
+      // Act
       await service.issueNewStakerPDA(addActions);
+      // Assert
       expect(service['request']).toHaveBeenCalledWith('mutationCreatePDA', {
         data_model_id: '',
         org_gateway_id: '',
@@ -509,12 +503,45 @@ describe('PDAService', () => {
         },
       });
     });
+    test(`Should set 'owner_type' ='GATEWAY_ID' and set related 'serviceDomain' when 'node_type' = 'custodian' 
+and call method request with correct parameters`, async () => {
+      jest
+        .spyOn(service as any, 'request')
+        .mockReturnValueOnce(issueNewStakerPDAResponse);
+      jest
+        .spyOn(service as any, 'getIssueStakerPdaGQL')
+        .mockReturnValue('mutationCreatePDA');
+      // Act
+      await service.issueNewStakerPDA(addActions);
+      // Assert
+      expect(service['request']).toHaveBeenCalledWith('mutationCreatePDA', {
+        data_model_id: '',
+        org_gateway_id: '',
+        owner: 'owner',
+        owner_type: 'GATEWAY_ID',
+        claim: {
+          pdaSubtype: 'Gateway',
+          pdaType: 'staker',
+          type: 'custodian',
+          point: 1,
+          serviceDomain: 'example.com',
+          wallets: [
+            {
+              address: '',
+              amount: 1,
+            },
+          ],
+        },
+      });
+    });
 
     describe('getUpdateStakerPdaGQL', () => {
       test('Should be defined', () => {
+        // Assert
         expect(service['getUpdateStakerPdaGQL']).toBeDefined();
       });
       test('Should return getUpdateStakerPda graphQL query', () => {
+        // Assert
         expect(service['getUpdateStakerPdaGQL']()).toBe(
           `
     mutation updatePDA($PDA_ID: String!, $claim: JSON!) {
@@ -560,24 +587,31 @@ describe('PDAService', () => {
         ];
       });
       test('Should be defined', () => {
+        // Assert
         expect(service.updateIssuedStakerPDAs).toBeDefined();
       });
       test('Should update staker PDAs', async () => {
+        // Arrange
         jest
           .spyOn(service as any, 'request')
           .mockReturnValueOnce(updateStakerPDAVariables);
+        // Act
         await service.updateIssuedStakerPDAs(updateActions);
+        // Assert
         expect(service['request']).toHaveBeenCalledTimes(updateActions.length);
         expect(service['request']).toHaveBeenCalledTimes(1);
       });
       test('Should call method request with correct parameters', async () => {
+        // Arrange
         jest
           .spyOn(service as any, 'request')
           .mockReturnValueOnce(issueNewStakerPDAResponse);
         jest
           .spyOn(service as any, 'getUpdateStakerPdaGQL')
           .mockReturnValue('mutationUpdatePDA');
+        // Act
         await service.updateIssuedStakerPDAs(updateActions);
+        // Assert
         expect(service['request']).toHaveBeenCalledWith('mutationUpdatePDA', {
           pda_id: 'id',
           claim: {
@@ -592,6 +626,7 @@ describe('PDAService', () => {
         });
       });
       test('Should call request method with correct parameters when wallet is not defined', async () => {
+        // Arrange
         updateActions = [
           {
             pda_id: 'id',
@@ -604,7 +639,9 @@ describe('PDAService', () => {
         jest
           .spyOn(service as any, 'getUpdateStakerPdaGQL')
           .mockReturnValue('mutationUpdatePDA');
+        // Act
         await service.updateIssuedStakerPDAs(updateActions);
+        // Assert
         expect(service['request']).toHaveBeenCalledWith('mutationUpdatePDA', {
           pda_id: 'id',
           claim: {
