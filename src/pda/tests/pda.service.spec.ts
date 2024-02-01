@@ -218,6 +218,28 @@ describe('PDAService', () => {
       // Assert
       expect(service.getIssuedStakerPDAs).toBeDefined();
     });
+    test('Should call getIssuedPDACountGQL & getIssuedPDAsGQL', async () => {
+      // Arrange
+      jest.spyOn(service as any, 'getIssuedPDACountGQL').mockReturnValue('');
+      jest.spyOn(service as any, 'getIssuedPDAsGQL').mockReturnValue('');
+      issuedPDACountResponse = {
+        data: { issuedPDAsCount: 0 },
+      };
+      PDAResponse = {
+        data: {
+          issuedPDAs: [],
+        },
+      };
+      jest
+        .spyOn(service as any, 'request')
+        .mockReturnValueOnce(issuedPDACountResponse);
+      jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
+      // Act
+      await service.getIssuedStakerPDAs();
+      // Assert
+      expect(service['getIssuedPDACountGQL']).toHaveBeenCalledTimes(1);
+      expect(service['getIssuedPDAsGQL']).toHaveBeenCalledTimes(1);
+    });
     test('Should return an empty array when issuedPDAsCount is 0', async () => {
       // Arrange
       issuedPDACountResponse = {

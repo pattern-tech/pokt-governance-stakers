@@ -28,13 +28,20 @@ describe('DNSResolver', () => {
   });
 
   describe('getTXTRecords', () => {
+    beforeEach(() => {
+      jest.spyOn(DNS, 'resolveTxt').mockResolvedValue([]);
+    });
     test('Should be defined', () => {
       // Assert
       expect(resolver['getTXTRecords']).toBeDefined();
     });
+    test('Should call resolveTxt method from DNS with correct parameters', async () => {
+      // Act
+      await resolver['getTXTRecords']('example.com');
+      expect(DNS.resolveTxt).toHaveBeenCalledWith('example.com');
+      expect(DNS.resolveTxt).toHaveBeenCalledTimes(1);
+    });
     test('should handle the case when resolveTxt returns no records', async () => {
-      // Arrange
-      jest.spyOn(DNS, 'resolveTxt').mockResolvedValue([]);
       // Act
       const result = await resolver['getTXTRecords']('example.com');
       // Assert
@@ -72,6 +79,14 @@ describe('DNSResolver', () => {
     test('Should be defined', () => {
       // Assert
       expect(resolver.getGatewayIDFromDomain).toBeDefined();
+    });
+    test('Should call resolveTxt method from DNS with correct parameters', async () => {
+      // Arrange
+      jest.spyOn(DNS, 'resolveTxt').mockResolvedValue([]);
+      // Act
+      await resolver['getTXTRecords']('example.com');
+      expect(DNS.resolveTxt).toHaveBeenCalledWith('example.com');
+      expect(DNS.resolveTxt).toHaveBeenCalledTimes(1);
     });
     test('Should return "false" if identifier !== GATEWAY_ID', async () => {
       // Arrange
