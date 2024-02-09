@@ -86,7 +86,7 @@ export interface IssueNewStakerPDAResponse {
 }
 
 export interface UpdateStakerPDAVariables {
-  pda_id: string;
+  PDA_id: string;
   claim: Partial<PDAClaimBase<'staker'> & StakerPDAClaim>;
 }
 
