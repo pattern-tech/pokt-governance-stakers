@@ -205,8 +205,8 @@ export class PDAService {
 
   private getUpdateStakerPdaGQL() {
     return `
-    mutation updatePDA($PDA_ID: String!, $claim: JSON!) {
-      updatePDA(input: { id: $PDA_ID, claim: $claim }) {
+    mutation updatePDA($pda_id: String!, $claim: JSON!) {
+      updatePDA(input: { id: $pda_id, claim: $claim }) {
           id
       }
     }`;
