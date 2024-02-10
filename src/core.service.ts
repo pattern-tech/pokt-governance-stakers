@@ -33,7 +33,8 @@ export class CoreService {
             return (
               PDA_record.dataAsset.claim.serviceDomain === domain &&
               PDA_record.dataAsset.owner.gatewayId === resolvedGatewayID &&
-              PDA_record.dataAsset.claim.pdaSubtype === 'Validator'
+              PDA_record.dataAsset.claim.pdaSubtype === 'Validator' &&
+              PDA_record.dataAsset.claim.type === 'custodian'
             );
           });
 
@@ -75,31 +76,34 @@ export class CoreService {
 
     for (let index = 0; index < validStakersPDAs.length; index++) {
       const PDA_record = validStakersPDAs[index];
-      const nodRecordsDomain = Object.keys(stakedNodesData.custodian);
-      let isPDAValid = false;
 
-      for (let node_idx = 0; node_idx < nodRecordsDomain.length; node_idx++) {
-        const nodeRecordDomain = nodRecordsDomain[node_idx];
-        const resolvedGatewayID =
-          await this.dnsResolver.getGatewayIDFromDomain(nodeRecordDomain);
+      if (PDA_record.dataAsset.claim.type === 'custodian') {
+        const nodRecordsDomain = Object.keys(stakedNodesData.custodian);
+        let isPDAValid = false;
 
-        if (
-          PDA_record.dataAsset.claim.serviceDomain === nodeRecordDomain &&
-          PDA_record.dataAsset.owner.gatewayId === resolvedGatewayID &&
-          PDA_record.dataAsset.claim.pdaSubtype === 'Validator'
-        ) {
-          isPDAValid = true;
-          break;
+        for (let node_idx = 0; node_idx < nodRecordsDomain.length; node_idx++) {
+          const nodeRecordDomain = nodRecordsDomain[node_idx];
+          const resolvedGatewayID =
+            await this.dnsResolver.getGatewayIDFromDomain(nodeRecordDomain);
+
+          if (
+            PDA_record.dataAsset.claim.serviceDomain === nodeRecordDomain &&
+            PDA_record.dataAsset.owner.gatewayId === resolvedGatewayID &&
+            PDA_record.dataAsset.claim.pdaSubtype === 'Validator'
+          ) {
+            isPDAValid = true;
+            break;
+          }
         }
-      }
 
-      if (!isPDAValid) {
-        // update zero point
-        actions.update.push({
-          pda_id: PDA_record.id,
-          point: 0,
-          wallets: [],
-        });
+        if (!isPDAValid) {
+          // update zero point
+          actions.update.push({
+            pda_id: PDA_record.id,
+            point: 0,
+            wallets: [],
+          });
+        }
       }
     }
   }
@@ -119,7 +123,8 @@ export class CoreService {
         const PDA_record = lodash.find(validStakersPDAs, (PDA_record) => {
           return (
             PDA_record.dataAsset.claim.wallets[0]?.address === walletAddress &&
-            PDA_record.dataAsset.claim.pdaSubtype === 'Validator'
+            PDA_record.dataAsset.claim.pdaSubtype === 'Validator' &&
+            PDA_record.dataAsset.claim.type === 'non-custodian'
           );
         });
 
@@ -159,28 +164,35 @@ export class CoreService {
 
     for (let index = 0; index < validStakersPDAs.length; index++) {
       const PDA_record = validStakersPDAs[index];
-      const nodeRecordsWallets = Object.keys(stakedNodesData.non_custodian);
-      let isPDAValid = false;
 
-      for (let node_idx = 0; node_idx < nodeRecordsWallets.length; node_idx++) {
-        const nodeRecordsWallet = nodeRecordsWallets[node_idx];
+      if (PDA_record.dataAsset.claim.type === 'non-custodian') {
+        const nodeRecordsWallets = Object.keys(stakedNodesData.non_custodian);
+        let isPDAValid = false;
 
-        if (
-          PDA_record.dataAsset.claim.wallets[0]?.address ===
-            nodeRecordsWallet &&
-          PDA_record.dataAsset.claim.pdaSubtype === 'Validator'
+        for (
+          let node_idx = 0;
+          node_idx < nodeRecordsWallets.length;
+          node_idx++
         ) {
-          isPDAValid = true;
-          break;
-        }
-      }
+          const nodeRecordsWallet = nodeRecordsWallets[node_idx];
 
-      if (!isPDAValid) {
-        // update zero point
-        actions.update.push({
-          pda_id: PDA_record.id,
-          point: 0,
-        });
+          if (
+            PDA_record.dataAsset.claim.wallets[0]?.address ===
+              nodeRecordsWallet &&
+            PDA_record.dataAsset.claim.pdaSubtype === 'Validator'
+          ) {
+            isPDAValid = true;
+            break;
+          }
+        }
+
+        if (!isPDAValid) {
+          // update zero point
+          actions.update.push({
+            pda_id: PDA_record.id,
+            point: 0,
+          });
+        }
       }
     }
   }

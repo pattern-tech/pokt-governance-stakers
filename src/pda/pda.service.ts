@@ -205,8 +205,8 @@ export class PDAService {
 
   private getUpdateStakerPdaGQL() {
     return `
-    mutation updatePDA($pda_id: String!, $claim: JSON!) {
-      updatePDA(input: { id: $pda_id, claim: $claim }) {
+    mutation updatePDA($PDA_id: String!, $claim: JSON!) {
+      updatePDA(input: { id: $PDA_id, claim: $claim }) {
           id
       }
     }`;
@@ -219,7 +219,7 @@ export class PDAService {
       const updateAction = updateActions[idx];
 
       const variables: UpdateStakerPDAVariables = {
-        pda_id: updateAction.pda_id,
+        PDA_id: updateAction.pda_id,
         claim: {
           point: updateAction.point,
           ...(updateAction.wallets ? { wallets: updateAction.wallets } : null),
