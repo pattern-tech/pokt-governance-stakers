@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import DNS from 'dns/promises';
+import DNS from 'node:dns/promises';
 import { WinstonProvider } from '@common/winston/winston.provider';
 
 @Injectable()
@@ -8,6 +8,7 @@ export class DNSResolver {
 
   private async getTXTRecords(domain: string) {
     const finalRecords: Array<string> = [];
+
     const records = await DNS.resolveTxt(domain);
 
     for (let r_idx = 0; r_idx < records.length; r_idx++) {
@@ -27,7 +28,7 @@ export class DNSResolver {
         const record = records[idx];
         const [identifier, value] = record.split(/=(.*)/, 2);
 
-        if (identifier === 'GATEWAY_ID' && value?.length > 0) {
+        if (identifier === 'POKT_GATEWAY_ID' && value?.length > 0) {
           return value;
         }
       }

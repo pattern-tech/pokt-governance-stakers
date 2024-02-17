@@ -2,6 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
+import { WinstonProvider } from '@common/winston/winston.provider';
 import { CoreAddAction, CoreUpdateAction } from '../core.interface';
 import { Pagination } from './interfaces/common.interface';
 import {
@@ -21,12 +22,18 @@ export class PDAService {
   constructor(
     private readonly config: ConfigService,
     private readonly axios: HttpService,
+    private readonly logger: WinstonProvider,
   ) {}
 
   private async request<T>(
     query: string,
     variables?: Record<string, any>,
   ): Promise<T> {
+    this.logger.debug(
+      'request method\n' + `input => ${JSON.stringify({ query, variables })}\n`,
+      PDAService.name,
+    );
+
     const response = await firstValueFrom(
       this.axios.post<T>(
         this.config.get<string>('MYGATEWAY_ENDPOINT_URL'),
@@ -44,6 +51,14 @@ export class PDAService {
           },
         },
       ),
+    );
+
+    this.logger.debug(
+      `response => ${JSON.stringify({
+        status: response.status,
+        body: response.data,
+      })}\n`,
+      PDAService.name,
     );
 
     return response.data;
@@ -115,6 +130,10 @@ export class PDAService {
       pdaCountQuery,
       pdaCountVariables,
     );
+
+    if (countResponse.data === null) {
+      throw new Error('Does not have any valid organization');
+    }
 
     const partitions = this.pagination(countResponse.data.issuedPDAsCount);
     const promises: Array<Promise<IssuedPDAsResponse>> = [];
@@ -195,11 +214,11 @@ export class PDAService {
           ...(addAction.node_type === 'custodian'
             ? { serviceDomain: addAction.serviceDomain }
             : null),
-          wallets: addAction.wallets,
+          wallets: [], // wallets: addAction.wallets,
         },
       };
 
-      this.request<IssueNewStakerPDAResponse>(query, variables);
+      await this.request<IssueNewStakerPDAResponse>(query, variables);
     }
   }
 
@@ -222,7 +241,9 @@ export class PDAService {
         PDA_id: updateAction.pda_id,
         claim: {
           point: updateAction.point,
-          ...(updateAction.wallets ? { wallets: updateAction.wallets } : null),
+          ...(updateAction.wallets
+            ? { wallets: [] /* updateAction.wallets */ }
+            : null),
         },
       };
 
