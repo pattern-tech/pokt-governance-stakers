@@ -2,6 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
+import { sleep } from '@common/utils/sleep.util';
 import { WinstonProvider } from '@common/winston/winston.provider';
 import { BaseRetriever } from './interfaces/common.interface';
 import {
@@ -97,6 +98,8 @@ export class PoktScanRetriever implements BaseRetriever<never, PoktScanOutput> {
 
       results.push(...result.data.ListPoktNode.items);
       nextPage = this.nextPage(result.data.ListPoktNode.pageInfo);
+
+      await sleep(1000);
     } while (nextPage !== null);
 
     return results;
