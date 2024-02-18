@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import lodash from 'lodash';
 import { DNSResolver } from '@common/DNS-lookup/dns.resolver';
+import { WinstonProvider } from '@common/winston/winston.provider';
 import { CorePDAsUpcomingActions } from './core.interface';
 import { IssuedStakerPDA } from './pda/interfaces/pda.interface';
 import { PoktScanOutput } from './poktscan/interfaces/pokt-scan.interface';
@@ -14,6 +15,7 @@ export class CoreService {
     private readonly poktScanRetriever: PoktScanRetriever,
     private readonly dnsResolver: DNSResolver,
     private readonly pdaService: PDAService,
+    private readonly logger: WinstonProvider,
   ) {}
 
   private async setCustodianActions(
@@ -21,6 +23,8 @@ export class CoreService {
     validStakersPDAs: Array<IssuedStakerPDA>,
     actions: CorePDAsUpcomingActions,
   ) {
+    this.logger.log('Started set custodian actions', CoreService.name);
+
     for (const domain in stakedNodesData.custodian) {
       if (
         Object.prototype.hasOwnProperty.call(stakedNodesData.custodian, domain)
@@ -74,6 +78,8 @@ export class CoreService {
       }
     }
 
+    this.logger.log('Started check PDAs custodian', CoreService.name);
+
     for (let index = 0; index < validStakersPDAs.length; index++) {
       const PDA_record = validStakersPDAs[index];
 
@@ -106,6 +112,8 @@ export class CoreService {
         }
       }
     }
+
+    this.logger.log('Completed set custodian actions', CoreService.name);
   }
 
   private async setNonCustodianActions(
@@ -113,6 +121,8 @@ export class CoreService {
     validStakersPDAs: Array<IssuedStakerPDA>,
     actions: CorePDAsUpcomingActions,
   ) {
+    this.logger.log('Started set nonCustodian actions', CoreService.name);
+
     for (const walletAddress in stakedNodesData.non_custodian) {
       if (
         Object.prototype.hasOwnProperty.call(
@@ -162,6 +172,8 @@ export class CoreService {
       }
     }
 
+    this.logger.log('Started check PDAs nonCustodian', CoreService.name);
+
     for (let index = 0; index < validStakersPDAs.length; index++) {
       const PDA_record = validStakersPDAs[index];
 
@@ -195,6 +207,8 @@ export class CoreService {
         }
       }
     }
+
+    this.logger.log('Completed set nonCustodian actions', CoreService.name);
   }
 
   private async getPDAsUpcomingActions(
@@ -221,17 +235,27 @@ export class CoreService {
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handler() {
-    const stakedNodesData = await this.poktScanRetriever.retrieve();
-    const validStakersPDAs = await this.pdaService.getIssuedStakerPDAs();
+    try {
+      this.logger.log('Started task', CoreService.name);
 
-    const actions = await this.getPDAsUpcomingActions(
-      stakedNodesData,
-      validStakersPDAs,
-    );
+      const stakedNodesData = await this.poktScanRetriever.retrieve();
+      const validStakersPDAs = await this.pdaService.getIssuedStakerPDAs();
 
-    // issue new PDAs
-    await this.pdaService.issueNewStakerPDA(actions.add);
-    // update issued PDAs' point
-    await this.pdaService.updateIssuedStakerPDAs(actions.update);
+      const actions = await this.getPDAsUpcomingActions(
+        stakedNodesData,
+        validStakersPDAs,
+      );
+
+      this.logger.debug(actions, CoreService.name);
+
+      // issue new PDAs
+      await this.pdaService.issueNewStakerPDA(actions.add);
+      // update issued PDAs' point
+      await this.pdaService.updateIssuedStakerPDAs(actions.update);
+
+      this.logger.log('Completed task', CoreService.name);
+    } catch (err) {
+      this.logger.error(err.message, CoreService.name, { stack: err.stack });
+    }
   }
 }
