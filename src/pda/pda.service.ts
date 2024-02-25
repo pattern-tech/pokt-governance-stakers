@@ -1,21 +1,20 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { reduce } from 'lodash';
 import { firstValueFrom } from 'rxjs';
 import { WinstonProvider } from '@common/winston/winston.provider';
 import { CoreAddAction, CoreUpdateAction } from '../core.interface';
 import { Pagination } from './interfaces/common.interface';
 import {
-  IssueNewValidatorPDAResponse,
-  IssueNewValidatorPDAVariables,
+  IssueNewStakerPDAResponse,
+  IssueNewStakerPDAVariables,
   IssuedPDACountResponse,
   IssuedPDACountVariables,
   IssuedPDAsResponse,
   IssuedPDAsVariables,
   IssuedStakerPDA,
-  UpdateValidatorPDAResponse,
-  UpdateValidatorPDAVariables,
+  UpdateStakerPDAResponse,
+  UpdateStakerPDAVariables,
   UserAuthenticationsResponse,
   UserAuthenticationsVariables,
 } from './interfaces/pda.interface';
@@ -171,7 +170,7 @@ export class PDAService {
     return results;
   }
 
-  private getIssueValidatorPdaGQL() {
+  private getIssueStakerPdaGQL() {
     return `
     mutation CreatePDA(
       $org_gateway_id: String!
@@ -195,15 +194,15 @@ export class PDAService {
     }`;
   }
 
-  async issueNewValidatorPDA(addActions: Array<CoreAddAction>) {
-    const query = this.getIssueValidatorPdaGQL();
+  async issueNewStakerPDA(addActions: Array<CoreAddAction>) {
+    const query = this.getIssueStakerPdaGQL();
     const DATA_MODEL_ID = this.config.get<string>('POKT_STAKER_DATA_MODEL_ID');
     const ORG_GATEWAY_ID = this.config.get<string>('POKT_ORG_GATEWAY_ID');
 
     for (let idx = 0; idx < addActions.length; idx++) {
       const addAction = addActions[idx];
 
-      const variables: IssueNewValidatorPDAVariables = {
+      const variables: IssueNewStakerPDAVariables = {
         data_model_id: DATA_MODEL_ID,
         org_gateway_id: ORG_GATEWAY_ID,
         owner: addAction.owner,
@@ -212,7 +211,7 @@ export class PDAService {
         claim: {
           pdaSubtype: addAction.pda_sub_type,
           pdaType: 'staker',
-          type: addAction.node_type,
+          ...(addAction.node_type ? { type: addAction.node_type } : null),
           point: addAction.point,
           ...(addAction.node_type === 'custodian'
             ? { serviceDomain: addAction.serviceDomain }
@@ -221,11 +220,11 @@ export class PDAService {
         },
       };
 
-      await this.request<IssueNewValidatorPDAResponse>(query, variables);
+      await this.request<IssueNewStakerPDAResponse>(query, variables);
     }
   }
 
-  private getUpdateValidatorPdaGQL() {
+  private getUpdateStakerPdaGQL() {
     return `
     mutation updatePDA($PDA_id: String!, $claim: JSON!) {
       updatePDA(input: { id: $PDA_id, claim: $claim }) {
@@ -234,13 +233,13 @@ export class PDAService {
     }`;
   }
 
-  async updateIssuedValidatorPDAs(updateActions: Array<CoreUpdateAction>) {
-    const query = this.getUpdateValidatorPdaGQL();
+  async updateIssuedStakerPDAs(updateActions: Array<CoreUpdateAction>) {
+    const query = this.getUpdateStakerPdaGQL();
 
     for (let idx = 0; idx < updateActions.length; idx++) {
       const updateAction = updateActions[idx];
 
-      const variables: UpdateValidatorPDAVariables = {
+      const variables: UpdateStakerPDAVariables = {
         PDA_id: updateAction.pda_id,
         claim: {
           point: updateAction.point,
@@ -250,7 +249,7 @@ export class PDAService {
         },
       };
 
-      await this.request<UpdateValidatorPDAResponse>(query, variables);
+      await this.request<UpdateStakerPDAResponse>(query, variables);
     }
   }
 

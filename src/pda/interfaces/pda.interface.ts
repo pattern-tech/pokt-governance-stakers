@@ -76,7 +76,7 @@ export interface IssuedPDACountVariables {
   org_gateway_id: string;
 }
 
-export interface IssueNewValidatorPDAVariables {
+export interface IssueNewStakerPDAVariables {
   org_gateway_id: string;
   data_model_id: string;
   owner: string;
@@ -84,7 +84,7 @@ export interface IssueNewValidatorPDAVariables {
   claim: PDAClaimBase<'staker'> & StakerPDAClaim;
 }
 
-export interface IssueNewValidatorPDAResponse {
+export interface IssueNewStakerPDAResponse {
   data: {
     createPDA: {
       id: string;
@@ -92,12 +92,12 @@ export interface IssueNewValidatorPDAResponse {
   };
 }
 
-export interface UpdateValidatorPDAVariables {
+export interface UpdateStakerPDAVariables {
   PDA_id: string;
   claim: Partial<PDAClaimBase<'staker'> & StakerPDAClaim>;
 }
 
-export interface UpdateValidatorPDAResponse {
+export interface UpdateStakerPDAResponse {
   data: {
     updatePDA: {
       id: string;
