@@ -15,6 +15,8 @@ import {
   IssuedStakerPDA,
   UpdateStakerPDAResponse,
   UpdateStakerPDAVariables,
+  UserAuthenticationsResponse,
+  UserAuthenticationsVariables,
 } from './interfaces/pda.interface';
 
 @Injectable()
@@ -249,5 +251,22 @@ export class PDAService {
 
       await this.request<UpdateStakerPDAResponse>(query, variables);
     }
+  }
+
+  private getUserAuthenticationsGQL() {
+    return `
+    query UserAuthentications($user_GID: String!) {
+      userAuthentications(user: { type: GATEWAY_ID, value: $user_GID }) {
+        address
+        chain
+      }
+    }`;
+  }
+
+  async getUserAuthentications(user_GID: string) {
+    const query = this.getUserAuthenticationsGQL();
+    const variables: UserAuthenticationsVariables = { user_GID };
+
+    return await this.request<UserAuthenticationsResponse>(query, variables);
   }
 }
