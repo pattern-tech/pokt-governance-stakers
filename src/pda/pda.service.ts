@@ -6,15 +6,15 @@ import { WinstonProvider } from '@common/winston/winston.provider';
 import { CoreAddAction, CoreUpdateAction } from '../core.interface';
 import { Pagination } from './interfaces/common.interface';
 import {
-  IssueNewStakerPDAResponse,
-  IssueNewStakerPDAVariables,
+  IssueNewValidatorPDAResponse,
+  IssueNewValidatorPDAVariables,
   IssuedPDACountResponse,
   IssuedPDACountVariables,
   IssuedPDAsResponse,
   IssuedPDAsVariables,
   IssuedStakerPDA,
-  UpdateStakerPDAResponse,
-  UpdateStakerPDAVariables,
+  UpdateValidatorPDAResponse,
+  UpdateValidatorPDAVariables,
   UserAuthenticationsResponse,
   UserAuthenticationsVariables,
 } from './interfaces/pda.interface';
@@ -170,7 +170,7 @@ export class PDAService {
     return results;
   }
 
-  private getIssueStakerPdaGQL() {
+  private getIssueValidatorPdaGQL() {
     return `
     mutation CreatePDA(
       $org_gateway_id: String!
@@ -194,15 +194,15 @@ export class PDAService {
     }`;
   }
 
-  async issueNewStakerPDA(addActions: Array<CoreAddAction>) {
-    const query = this.getIssueStakerPdaGQL();
+  async issueNewValidatorPDA(addActions: Array<CoreAddAction>) {
+    const query = this.getIssueValidatorPdaGQL();
     const DATA_MODEL_ID = this.config.get<string>('POKT_STAKER_DATA_MODEL_ID');
     const ORG_GATEWAY_ID = this.config.get<string>('POKT_ORG_GATEWAY_ID');
 
     for (let idx = 0; idx < addActions.length; idx++) {
       const addAction = addActions[idx];
 
-      const variables: IssueNewStakerPDAVariables = {
+      const variables: IssueNewValidatorPDAVariables = {
         data_model_id: DATA_MODEL_ID,
         org_gateway_id: ORG_GATEWAY_ID,
         owner: addAction.owner,
@@ -220,11 +220,11 @@ export class PDAService {
         },
       };
 
-      await this.request<IssueNewStakerPDAResponse>(query, variables);
+      await this.request<IssueNewValidatorPDAResponse>(query, variables);
     }
   }
 
-  private getUpdateStakerPdaGQL() {
+  private getUpdateValidatorPdaGQL() {
     return `
     mutation updatePDA($PDA_id: String!, $claim: JSON!) {
       updatePDA(input: { id: $PDA_id, claim: $claim }) {
@@ -233,13 +233,13 @@ export class PDAService {
     }`;
   }
 
-  async updateIssuedStakerPDAs(updateActions: Array<CoreUpdateAction>) {
-    const query = this.getUpdateStakerPdaGQL();
+  async updateIssuedValidatorPDAs(updateActions: Array<CoreUpdateAction>) {
+    const query = this.getUpdateValidatorPdaGQL();
 
     for (let idx = 0; idx < updateActions.length; idx++) {
       const updateAction = updateActions[idx];
 
-      const variables: UpdateStakerPDAVariables = {
+      const variables: UpdateValidatorPDAVariables = {
         PDA_id: updateAction.pda_id,
         claim: {
           point: updateAction.point,
@@ -249,7 +249,7 @@ export class PDAService {
         },
       };
 
-      await this.request<UpdateStakerPDAResponse>(query, variables);
+      await this.request<UpdateValidatorPDAResponse>(query, variables);
     }
   }
 
