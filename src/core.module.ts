@@ -8,6 +8,7 @@ import { WinstonModule } from '@common/winston/winston.module';
 import { winstonConsoleTransport } from '@common/winston/winston.utils';
 import { PDAModule } from './pda/pda.module';
 import { PoktModule } from './poktscan/pokt.module';
+import { WPoktModule } from './wpokt/wpokt.module';
 import { CoreService } from './core.service';
 
 @Module({
@@ -48,6 +49,7 @@ import { CoreService } from './core.service';
     }),
     ScheduleModule.forRoot(),
     PoktModule,
+    WPoktModule,
     DNSModule,
     PDAModule,
   ],

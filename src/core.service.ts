@@ -211,7 +211,7 @@ export class CoreService {
     this.logger.log('Completed set nonCustodian actions', CoreService.name);
   }
 
-  private async getPDAsUpcomingActions(
+  private async getValidatorPDAsUpcomingActions(
     stakedNodesData: PoktScanOutput,
     validStakersPDAs: Array<IssuedStakerPDA>,
   ): Promise<CorePDAsUpcomingActions> {
@@ -233,25 +233,42 @@ export class CoreService {
     return actions;
   }
 
+  private async recalculateLiquidityProviderPDAs(
+    validStakersPDAs: Array<IssuedStakerPDA>,
+  ) {}
+
+  private async recalculateValidatorPDAs(
+    validStakersPDAs: Array<IssuedStakerPDA>,
+  ) {
+    const stakedNodesData = await this.poktScanRetriever.retrieve();
+    const actions = await this.getValidatorPDAsUpcomingActions(
+      stakedNodesData,
+      validStakersPDAs,
+    );
+
+    this.logger.debug(
+      `Validator upcoming actions: ${JSON.stringify(actions)}`,
+      CoreService.name,
+    );
+
+    // issue new PDAs
+    await this.pdaService.issueNewValidatorPDA(actions.add);
+    // update issued PDAs' point
+    await this.pdaService.updateIssuedValidatorPDAs(actions.update);
+  }
+
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handler() {
     try {
       this.logger.log('Started task', CoreService.name);
 
-      const stakedNodesData = await this.poktScanRetriever.retrieve();
       const validStakersPDAs = await this.pdaService.getIssuedStakerPDAs();
 
-      const actions = await this.getPDAsUpcomingActions(
-        stakedNodesData,
-        validStakersPDAs,
-      );
+      // Staker -> Validator PDAs
+      await this.recalculateValidatorPDAs(validStakersPDAs);
 
-      this.logger.debug(actions, CoreService.name);
-
-      // issue new PDAs
-      await this.pdaService.issueNewStakerPDA(actions.add);
-      // update issued PDAs' point
-      await this.pdaService.updateIssuedStakerPDAs(actions.update);
+      // Staker -> Liquidity provider PDAs
+      await this.recalculateLiquidityProviderPDAs(validStakersPDAs);
 
       this.logger.log('Completed task', CoreService.name);
     } catch (err) {
