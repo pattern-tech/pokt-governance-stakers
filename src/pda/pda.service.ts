@@ -1,6 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { reduce } from 'lodash';
 import { firstValueFrom } from 'rxjs';
 import { WinstonProvider } from '@common/winston/winston.provider';
 import { CoreAddAction, CoreUpdateAction } from '../core.interface';
@@ -263,10 +264,27 @@ export class PDAService {
     }`;
   }
 
-  async getUserAuthentications(user_GID: string) {
+  private async getUserAuthentications(user_GID: string) {
     const query = this.getUserAuthenticationsGQL();
     const variables: UserAuthenticationsVariables = { user_GID };
 
-    return await this.request<UserAuthenticationsResponse>(query, variables);
+    return this.request<UserAuthenticationsResponse>(query, variables);
+  }
+
+  async getUserEVMWallets(user_GID: string) {
+    const result: Array<string> = [];
+
+    const userAuthentications = await this.getUserAuthentications(user_GID);
+    const userAuthMethods = userAuthentications.data.userAuthentications;
+
+    for (let index = 0; index < userAuthMethods.length; index++) {
+      const userAuthMethod = userAuthMethods[index];
+
+      if (userAuthMethod.chain === 'EVM') {
+        result.push(userAuthMethod.address);
+      }
+    }
+
+    return result;
   }
 }
