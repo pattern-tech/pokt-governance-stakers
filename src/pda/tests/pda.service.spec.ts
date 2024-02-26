@@ -617,120 +617,113 @@ and call method request with correct parameters`, async () => {
         },
       });
     });
-
-    describe('getUpdateStakerPdaGQL', () => {
-      test('Should be defined', () => {
-        // Assert
-        expect(service['getUpdateStakerPdaGQL']).toBeDefined();
-      });
-      test('Should return getUpdateStakerPda graphQL query', () => {
-        // Assert
-        expect(service['getUpdateStakerPdaGQL']()).toBe(
-          `
+  });
+  describe('getUpdateStakerPdaGQL', () => {
+    test('Should be defined', () => {
+      // Assert
+      expect(service['getUpdateStakerPdaGQL']).toBeDefined();
+    });
+    test('Should return getUpdateStakerPda graphQL query', () => {
+      // Assert
+      expect(service['getUpdateStakerPdaGQL']()).toBe(
+        `
     mutation updatePDA($PDA_id: String!, $claim: JSON!) {
       updatePDA(input: { id: $PDA_id, claim: $claim }) {
           id
       }
     }`,
-        );
+      );
+    });
+  });
+
+  describe('updateIssuedStakerPDAs', () => {
+    let updateActions: Array<CoreUpdateAction>;
+    let updateStakerPDAVariables: UpdateStakerPDAVariables;
+    beforeEach(() => {
+      updateStakerPDAVariables = {
+        PDA_id: 'id',
+        claim: {
+          point: 3,
+          pdaType: 'staker',
+          pdaSubtype: 'Validator',
+          type: 'non-custodian',
+          serviceDomain: 'example.com',
+          wallets: [
+            {
+              address: 'address',
+              amount: 100,
+            },
+          ],
+        },
+      };
+      updateActions = [
+        {
+          pda_id: 'id',
+          point: 10,
+          wallets: [
+            {
+              address: 'address',
+              amount: 100,
+            },
+          ],
+        },
+      ];
+      jest
+        .spyOn(service as any, 'getUpdateStakerPdaGQL')
+        .mockReturnValue('mutationUpdatePDA');
+      jest
+        .spyOn(service as any, 'request')
+        .mockReturnValue(updateStakerPDAVariables);
+    });
+    test('Should be defined', () => {
+      // Assert
+      expect(service.updateIssuedStakerPDAs).toBeDefined();
+    });
+    test('Should call getUpdateStakerPdaGQL method', async () => {
+      // Act
+      await service.updateIssuedStakerPDAs(updateActions);
+      expect(service['getUpdateStakerPdaGQL']).toHaveBeenCalledTimes(1);
+    });
+    test('Should update staker PDAs', async () => {
+      // Act
+      await service.updateIssuedStakerPDAs(updateActions);
+      // Assert
+      expect(service['request']).toHaveBeenCalledTimes(updateActions.length);
+      expect(service['request']).toHaveBeenCalledTimes(1);
+    });
+    test('Should call method request with correct parameters', async () => {
+      // Act
+      await service.updateIssuedStakerPDAs(updateActions);
+      // Assert
+      expect(service['request']).toHaveBeenCalledWith('mutationUpdatePDA', {
+        PDA_id: 'id',
+        claim: {
+          point: 10,
+          wallets: [
+            {
+              address: 'address',
+              amount: 100,
+            },
+          ],
+        },
       });
     });
-
-    describe('updateIssuedStakerPDAs', () => {
-      let updateActions: Array<CoreUpdateAction>;
-      let updateStakerPDAVariables: UpdateStakerPDAVariables;
-      beforeEach(() => {
-        updateStakerPDAVariables = {
-          PDA_id: 'id',
-          claim: {
-            point: 3,
-            pdaType: 'staker',
-            pdaSubtype: 'Validator',
-            type: 'non-custodian',
-            serviceDomain: 'example.com',
-            wallets: [
-              {
-                address: 'address',
-                amount: 100,
-              },
-            ],
-          },
-        };
-        updateActions = [
-          {
-            pda_id: 'id',
-            point: 10,
-            wallets: [
-              {
-                address: 'address',
-                amount: 100,
-              },
-            ],
-          },
-        ];
-      });
-      test('Should be defined', () => {
-        // Assert
-        expect(service.updateIssuedStakerPDAs).toBeDefined();
-      });
-      test('Should update staker PDAs', async () => {
-        // Arrange
-        jest
-          .spyOn(service as any, 'request')
-          .mockReturnValueOnce(updateStakerPDAVariables);
-        // Act
-        await service.updateIssuedStakerPDAs(updateActions);
-        // Assert
-        expect(service['request']).toHaveBeenCalledTimes(updateActions.length);
-        expect(service['request']).toHaveBeenCalledTimes(1);
-      });
-      test('Should call method request with correct parameters', async () => {
-        // Arrange
-        jest
-          .spyOn(service as any, 'request')
-          .mockReturnValueOnce(issueNewStakerPDAResponse);
-        jest
-          .spyOn(service as any, 'getUpdateStakerPdaGQL')
-          .mockReturnValue('mutationUpdatePDA');
-        // Act
-        await service.updateIssuedStakerPDAs(updateActions);
-        // Assert
-        expect(service['request']).toHaveBeenCalledWith('mutationUpdatePDA', {
+    test('Should call request method with correct parameters when wallet is not defined', async () => {
+      // Arrange
+      updateActions = [
+        {
           pda_id: 'id',
-          claim: {
-            point: 10,
-            wallets: [
-              {
-                address: 'address',
-                amount: 100,
-              },
-            ],
-          },
-        });
-      });
-      test('Should call request method with correct parameters when wallet is not defined', async () => {
-        // Arrange
-        updateActions = [
-          {
-            pda_id: 'id',
-            point: 10,
-          },
-        ];
-        jest
-          .spyOn(service as any, 'request')
-          .mockReturnValueOnce(issueNewStakerPDAResponse);
-        jest
-          .spyOn(service as any, 'getUpdateStakerPdaGQL')
-          .mockReturnValue('mutationUpdatePDA');
-        // Act
-        await service.updateIssuedStakerPDAs(updateActions);
-        // Assert
-        expect(service['request']).toHaveBeenCalledWith('mutationUpdatePDA', {
-          pda_id: 'id',
-          claim: {
-            point: 10,
-          },
-        });
+          point: 10,
+        },
+      ];
+      // Act
+      await service.updateIssuedStakerPDAs(updateActions);
+      // Assert
+      expect(service['request']).toHaveBeenCalledWith('mutationUpdatePDA', {
+        PDA_id: 'id',
+        claim: {
+          point: 10,
+        },
       });
     });
   });
