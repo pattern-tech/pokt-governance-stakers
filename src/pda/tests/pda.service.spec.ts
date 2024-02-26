@@ -13,6 +13,7 @@ import {
 } from '../interfaces/pda.interface';
 import { CoreAddAction, CoreUpdateAction } from 'src/core.interface';
 import { PDAService } from '../pda.service';
+import exp from 'node:constants';
 
 // Mock the WinstonProvider
 jest.mock('@common/winston/winston.provider');
@@ -235,6 +236,10 @@ describe('PDAService', () => {
           },
         },
       };
+      jest.spyOn(service as any, 'getIssuedPDACountGQL').mockReturnValue('');
+      jest.spyOn(service as any, 'getIssuedPDAsGQL').mockReturnValue('');
+      jest.spyOn(config, 'get').mockReturnValue('POKT_ORG_GATEWAY_ID');
+
     });
     test('Should be defined', () => {
       // Assert
@@ -261,6 +266,15 @@ describe('PDAService', () => {
       // Assert
       expect(service['getIssuedPDACountGQL']).toHaveBeenCalledTimes(1);
       expect(service['getIssuedPDAsGQL']).toHaveBeenCalledTimes(1);
+    });
+    test('Should call get method from config', async () => {
+      // Assert
+      jest
+        .spyOn(service as any, 'request')
+        .mockReturnValueOnce(issuedPDACountResponse);
+      jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
+      await service.getIssuedStakerPDAs();
+      expect(config.get).toHaveBeenCalledWith('POKT_ORG_GATEWAY_ID');
     });
     test('Should throw Error when countResponse.data === null', async () => {
       // Arrange
@@ -385,7 +399,7 @@ describe('PDAService', () => {
       // Assert
       expect(returnValue).toEqual([PDA]);
     });
-    test('Should call request method two times for each PDA', async () => {
+    test('Should call request method two times for each PDA with correct parameters', async () => {
       // Arrange
       PDAResponse = {
         data: {
@@ -399,6 +413,14 @@ describe('PDAService', () => {
       // act
       await service.getIssuedStakerPDAs();
       // Assert
+      expect(service['request']).toHaveBeenCalledWith('', {
+        org_gateway_id: 'POKT_ORG_GATEWAY_ID',
+      });
+      expect(service['request']).toHaveBeenCalledWith('', {
+        org_gateway_id: 'POKT_ORG_GATEWAY_ID',
+        skip: 0,
+        take: 1,
+      });
       expect(service['request']).toHaveBeenCalledTimes(2);
     });
     test('Should check all PDAs and collect correct ones', async () => {
@@ -505,10 +527,21 @@ describe('PDAService', () => {
         },
       ];
       jest.spyOn(config, 'get').mockReturnValue('');
+      jest
+        .spyOn(service as any, 'getIssueStakerPdaGQL')
+        .mockReturnValue('mutationCreatePDA');
     });
     test('Should be defined', () => {
       // Assert
       expect(service.issueNewStakerPDA).toBeDefined();
+    });
+    test('Should call getIssueStakerPdaGQL method', async () => {
+      jest
+        .spyOn(service as any, 'request')
+        .mockReturnValueOnce(issueNewStakerPDAResponse);
+      // jest.spyOn(service as any, 'getIssueStakerPdaGQL').mockReturnValue('');
+      await service.issueNewStakerPDA(addActions);
+      expect(service['getIssueStakerPdaGQL']).toHaveBeenCalled();
     });
     test('Should issue new staker PDAs', async () => {
       // Arrange
@@ -540,9 +573,9 @@ and call method request with correct parameters`, async () => {
       jest
         .spyOn(service as any, 'request')
         .mockReturnValueOnce(issueNewStakerPDAResponse);
-      jest
-        .spyOn(service as any, 'getIssueStakerPdaGQL')
-        .mockReturnValue('mutationCreatePDA');
+      // jest
+      //   .spyOn(service as any, 'getIssueStakerPdaGQL')
+      //   .mockReturnValue('mutationCreatePDA');
       // Act
       await service.issueNewStakerPDA(addActions);
       // Assert
@@ -570,9 +603,9 @@ and call method request with correct parameters`, async () => {
       jest
         .spyOn(service as any, 'request')
         .mockReturnValueOnce(issueNewStakerPDAResponse);
-      jest
-        .spyOn(service as any, 'getIssueStakerPdaGQL')
-        .mockReturnValue('mutationCreatePDA');
+      // jest
+      //   .spyOn(service as any, 'getIssueStakerPdaGQL')
+      //   .mockReturnValue('mutationCreatePDA');
       // Act
       await service.issueNewStakerPDA(addActions);
       // Assert
@@ -606,8 +639,8 @@ and call method request with correct parameters`, async () => {
         // Assert
         expect(service['getUpdateStakerPdaGQL']()).toBe(
           `
-    mutation updatePDA($PDA_ID: String!, $claim: JSON!) {
-      updatePDA(input: { id: $PDA_ID, claim: $claim }) {
+    mutation updatePDA($PDA_id: String!, $claim: JSON!) {
+      updatePDA(input: { id: $PDA_id, claim: $claim }) {
           id
       }
     }`,
@@ -620,7 +653,7 @@ and call method request with correct parameters`, async () => {
       let updateStakerPDAVariables: UpdateStakerPDAVariables;
       beforeEach(() => {
         updateStakerPDAVariables = {
-          pda_id: 'id',
+          PDA_id: 'id',
           claim: {
             point: 3,
             pdaType: 'staker',
