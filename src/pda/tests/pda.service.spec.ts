@@ -239,7 +239,6 @@ describe('PDAService', () => {
       jest.spyOn(service as any, 'getIssuedPDACountGQL').mockReturnValue('');
       jest.spyOn(service as any, 'getIssuedPDAsGQL').mockReturnValue('');
       jest.spyOn(config, 'get').mockReturnValue('POKT_ORG_GATEWAY_ID');
-
     });
     test('Should be defined', () => {
       // Assert
@@ -526,6 +525,9 @@ describe('PDAService', () => {
           ],
         },
       ];
+      jest
+        .spyOn(service as any, 'request')
+        .mockReturnValue(issueNewStakerPDAResponse);
       jest.spyOn(config, 'get').mockReturnValue('');
       jest
         .spyOn(service as any, 'getIssueStakerPdaGQL')
@@ -535,19 +537,17 @@ describe('PDAService', () => {
       // Assert
       expect(service.issueNewStakerPDA).toBeDefined();
     });
+    test('Should call get method from config', async () => {
+      // Act
+      await service.getIssuedStakerPDAs();
+      // Assert
+      expect(config.get).toHaveBeenCalledWith('POKT_ORG_GATEWAY_ID');
+    });
     test('Should call getIssueStakerPdaGQL method', async () => {
-      jest
-        .spyOn(service as any, 'request')
-        .mockReturnValueOnce(issueNewStakerPDAResponse);
-      // jest.spyOn(service as any, 'getIssueStakerPdaGQL').mockReturnValue('');
       await service.issueNewStakerPDA(addActions);
       expect(service['getIssueStakerPdaGQL']).toHaveBeenCalled();
     });
     test('Should issue new staker PDAs', async () => {
-      // Arrange
-      jest
-        .spyOn(service as any, 'request')
-        .mockReturnValueOnce(issueNewStakerPDAResponse);
       // Act
       await service.issueNewStakerPDA(addActions);
       // Assert
@@ -570,12 +570,6 @@ and call method request with correct parameters`, async () => {
           ],
         },
       ];
-      jest
-        .spyOn(service as any, 'request')
-        .mockReturnValueOnce(issueNewStakerPDAResponse);
-      // jest
-      //   .spyOn(service as any, 'getIssueStakerPdaGQL')
-      //   .mockReturnValue('mutationCreatePDA');
       // Act
       await service.issueNewStakerPDA(addActions);
       // Assert
@@ -600,12 +594,6 @@ and call method request with correct parameters`, async () => {
     });
     test(`Should set 'owner_type' ='GATEWAY_ID' and set related 'serviceDomain' when 'node_type' = 'custodian' 
 and call method request with correct parameters`, async () => {
-      jest
-        .spyOn(service as any, 'request')
-        .mockReturnValueOnce(issueNewStakerPDAResponse);
-      // jest
-      //   .spyOn(service as any, 'getIssueStakerPdaGQL')
-      //   .mockReturnValue('mutationCreatePDA');
       // Act
       await service.issueNewStakerPDA(addActions);
       // Assert
