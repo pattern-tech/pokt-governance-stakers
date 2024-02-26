@@ -8,6 +8,7 @@ import { IssuedStakerPDA } from './pda/interfaces/pda.interface';
 import { PoktScanOutput } from './poktscan/interfaces/pokt-scan.interface';
 import { PDAService } from './pda/pda.service';
 import { PoktScanRetriever } from './poktscan/pokt.retriever';
+import { WPoktService } from './wpokt/wpokt.service';
 
 @Injectable()
 export class CoreService {
@@ -15,6 +16,7 @@ export class CoreService {
     private readonly poktScanRetriever: PoktScanRetriever,
     private readonly dnsResolver: DNSResolver,
     private readonly pdaService: PDAService,
+    private readonly wpoktService: WPoktService,
     private readonly logger: WinstonProvider,
   ) {}
 
@@ -211,7 +213,7 @@ export class CoreService {
     this.logger.log('Completed set nonCustodian actions', CoreService.name);
   }
 
-  private async getPDAsUpcomingActions(
+  private async getValidatorPDAsUpcomingActions(
     stakedNodesData: PoktScanOutput,
     validStakersPDAs: Array<IssuedStakerPDA>,
   ): Promise<CorePDAsUpcomingActions> {
@@ -233,25 +235,110 @@ export class CoreService {
     return actions;
   }
 
+  private async recalculateValidatorPDAs(
+    validStakersPDAs: Array<IssuedStakerPDA>,
+  ) {
+    const stakedNodesData = await this.poktScanRetriever.retrieve();
+    const actions = await this.getValidatorPDAsUpcomingActions(
+      stakedNodesData,
+      validStakersPDAs,
+    );
+
+    this.logger.debug(
+      `Validator upcoming actions: ${JSON.stringify(actions)}`,
+      CoreService.name,
+    );
+
+    // issue new PDAs
+    await this.pdaService.issueNewStakerPDA(actions.add);
+    // update issued PDAs' point
+    await this.pdaService.updateIssuedStakerPDAs(actions.update);
+  }
+
+  private async getLiquidityProviderPDAsUpcomingActions(
+    validStakersPDAs: Array<IssuedStakerPDA>,
+    GIDsLiquidity: Record<string, number>,
+  ) {
+    const actions: CorePDAsUpcomingActions = {
+      add: [],
+      update: [],
+    };
+    const updatedPDAsID: Array<string> = [];
+
+    for (let index = 0; index < validStakersPDAs.length; index++) {
+      const PDARecord = validStakersPDAs[index];
+      const PDARecordGatewayID = PDARecord.dataAsset.owner.gatewayId;
+      const gatewayIDLiquidity = GIDsLiquidity[PDARecordGatewayID];
+
+      if (PDARecord.dataAsset.claim.pdaSubtype === 'Liquidity Provider') {
+        if (PDARecord.dataAsset.claim.point !== gatewayIDLiquidity) {
+          actions.update.push({
+            pda_id: PDARecord.id,
+            point: gatewayIDLiquidity,
+          });
+        }
+
+        updatedPDAsID.push(PDARecord.id);
+      } else {
+        if (gatewayIDLiquidity > 0 && !updatedPDAsID.includes(PDARecord.id)) {
+          actions.add.push({
+            owner: PDARecordGatewayID,
+            pda_sub_type: 'Liquidity Provider',
+            point: gatewayIDLiquidity,
+          });
+        }
+      }
+    }
+
+    return actions;
+  }
+
+  private async recalculateLiquidityProviderPDAs(
+    validStakersPDAs: Array<IssuedStakerPDA>,
+  ) {
+    const GIDsWalletAddresses: Record<string, Array<string>> = {};
+
+    for (let index = 0; index < validStakersPDAs.length; index++) {
+      const PDARecord = validStakersPDAs[index];
+      const gatewayId = PDARecord.dataAsset.owner.gatewayId;
+
+      if (!(gatewayId in GIDsWalletAddresses)) {
+        GIDsWalletAddresses[gatewayId] =
+          await this.pdaService.getUserEVMWallets(gatewayId);
+      }
+    }
+
+    const GIDsLiquidity =
+      await this.wpoktService.getUsersWPoktLiquidity(GIDsWalletAddresses);
+
+    const actions = await this.getLiquidityProviderPDAsUpcomingActions(
+      validStakersPDAs,
+      GIDsLiquidity,
+    );
+
+    this.logger.debug(
+      `Liquidity Provider upcoming actions: ${JSON.stringify(actions)}`,
+      CoreService.name,
+    );
+
+    // issue new PDAs
+    await this.pdaService.issueNewStakerPDA(actions.add);
+    // update issued PDAs' point
+    await this.pdaService.updateIssuedStakerPDAs(actions.update);
+  }
+
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handler() {
     try {
       this.logger.log('Started task', CoreService.name);
 
-      const stakedNodesData = await this.poktScanRetriever.retrieve();
       const validStakersPDAs = await this.pdaService.getIssuedStakerPDAs();
 
-      const actions = await this.getPDAsUpcomingActions(
-        stakedNodesData,
-        validStakersPDAs,
-      );
+      // Staker -> Validator PDAs
+      await this.recalculateValidatorPDAs(validStakersPDAs);
 
-      this.logger.debug(actions, CoreService.name);
-
-      // issue new PDAs
-      await this.pdaService.issueNewStakerPDA(actions.add);
-      // update issued PDAs' point
-      await this.pdaService.updateIssuedStakerPDAs(actions.update);
+      // Staker -> Liquidity provider PDAs
+      await this.recalculateLiquidityProviderPDAs(validStakersPDAs);
 
       this.logger.log('Completed task', CoreService.name);
     } catch (err) {
