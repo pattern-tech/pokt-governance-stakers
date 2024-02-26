@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AxiosResponse } from 'axios';
 import { of } from 'rxjs';
+import { WinstonProvider } from '@common/winston/winston.provider';
 import {
   IssueNewStakerPDAResponse,
   IssuedPDACountResponse,
@@ -13,20 +14,25 @@ import {
 import { CoreAddAction, CoreUpdateAction } from 'src/core.interface';
 import { PDAService } from '../pda.service';
 
+// Mock the WinstonProvider
+jest.mock('@common/winston/winston.provider');
+
 // Describe the test suite for the PDAService
 describe('PDAService', () => {
   let service: PDAService;
   let axios: HttpService;
   let config: ConfigService;
+  let logger: WinstonProvider;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [HttpModule, ConfigModule],
-      providers: [PDAService],
+      providers: [PDAService, WinstonProvider],
     }).compile();
     service = module.get<PDAService>(PDAService);
     axios = module.get<HttpService>(HttpService);
     config = module.get<ConfigService>(ConfigService);
+    logger = module.get<WinstonProvider>(WinstonProvider);
 
     jest.clearAllMocks();
   });
@@ -61,6 +67,13 @@ describe('PDAService', () => {
       // Assert
       expect(service['request']).toBeDefined();
     });
+    test('Should call debug from logger with the correct parameters', () => {
+      expect(logger.debug).toHaveBeenCalledWith(
+        'request method\n' +
+          `input => ${JSON.stringify({ query, variables })}\n`,
+        PDAService.name,
+      );
+    });
     test('Should call get method from config', () => {
       // Assert
       expect(config.get).toHaveBeenCalledWith('MYGATEWAY_ENDPOINT_URL');
@@ -88,6 +101,15 @@ describe('PDAService', () => {
             'Content-Type': 'application/json',
           },
         },
+      );
+    });
+    test('Should call debug from logger with the correct parameters for the second call', () => {
+      expect(logger.debug).toHaveBeenCalledWith(
+        `response => ${JSON.stringify({
+          status: 200,
+          body: {},
+        })}\n`,
+        PDAService.name,
       );
     });
     test('Should return body from http response', () => {
@@ -239,6 +261,24 @@ describe('PDAService', () => {
       // Assert
       expect(service['getIssuedPDACountGQL']).toHaveBeenCalledTimes(1);
       expect(service['getIssuedPDAsGQL']).toHaveBeenCalledTimes(1);
+    });
+    test('Should throw Error when countResponse.data === null', async () => {
+      // Arrange
+      issuedPDACountResponse = {
+        data: null,
+      };
+      jest
+        .spyOn(service as any, 'request')
+        .mockReturnValueOnce(issuedPDACountResponse);
+      try {
+        // Act
+        await service.getIssuedStakerPDAs();
+        // to check the case if countResponse.data === null and Error does not run
+        throw new Error('Test failed');
+      } catch (err) {
+        // Assert
+        expect(err.message).toBe('Does not have any valid organization');
+      }
     });
     test('Should return an empty array when issuedPDAsCount is 0', async () => {
       // Arrange
