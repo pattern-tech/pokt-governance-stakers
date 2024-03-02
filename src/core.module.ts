@@ -1,3 +1,4 @@
+import { BullModule } from '@nestjs/bull';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -44,6 +45,16 @@ import { CoreService } from './core.service';
               : [winstonConsoleTransport],
         };
       },
+      inject: [ConfigService],
+    }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (config: ConfigService) => ({
+        redis: {
+          host: config.get('REDIS_HOST'),
+          port: config.get('REDIS_PORT'),
+        },
+      }),
       inject: [ConfigService],
     }),
     ScheduleModule.forRoot(),

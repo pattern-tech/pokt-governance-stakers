@@ -1,71 +1,27 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { firstValueFrom } from 'rxjs';
 import { WinstonProvider } from '@common/winston/winston.provider';
-import { CoreAddAction, CoreUpdateAction } from '../core.interface';
-import { Pagination } from './interfaces/common.interface';
 import {
-  IssueNewStakerPDAResponse,
-  IssueNewStakerPDAVariables,
   IssuedPDACountResponse,
   IssuedPDACountVariables,
   IssuedPDAsResponse,
   IssuedPDAsVariables,
   IssuedStakerPDA,
-  UpdateStakerPDAResponse,
-  UpdateStakerPDAVariables,
 } from './interfaces/pda.interface';
+import { AxsiosRequest } from './axios.pda';
 
 @Injectable()
-export class PDAService {
+export class PDAService extends AxsiosRequest {
   constructor(
-    private readonly config: ConfigService,
-    private readonly axios: HttpService,
-    private readonly logger: WinstonProvider,
-  ) {}
-
-  private async request<T>(
-    query: string,
-    variables?: Record<string, any>,
-  ): Promise<T> {
-    this.logger.debug(
-      'request method\n' + `input => ${JSON.stringify({ query, variables })}\n`,
-      PDAService.name,
-    );
-
-    const response = await firstValueFrom(
-      this.axios.post<T>(
-        this.config.get<string>('MYGATEWAY_ENDPOINT_URL'),
-        {
-          query,
-          variables,
-        },
-        {
-          headers: {
-            Authorization:
-              'Bearer ' +
-              this.config.get<string>('MYGATEWAY_AUTHENTICATION_TOKEN'),
-            'x-api-key': this.config.get<string>('MYGATEWAY_API_KEY'),
-            'Content-Type': 'application/json',
-          },
-        },
-      ),
-    );
-
-    this.logger.debug(
-      `response => ${JSON.stringify({
-        status: response.status,
-        body: response.data,
-      })}\n`,
-      PDAService.name,
-    );
-
-    return response.data;
+    protected readonly axios: HttpService,
+    protected readonly logger: WinstonProvider,
+    protected readonly config: ConfigService,
+  ) {
+    super(axios, logger, config);
   }
 
-  private getIssuedPDAsGQL() {
-    return `
+  static readonly getIssuedPDAsGQL: string = `
     query getPDAs($org_gateway_id: String!, $take: Float!, $skip: Float!) {
       issuedPDAs(
           filter: { organization: { type: GATEWAY_ID, value: $org_gateway_id } }
@@ -83,45 +39,18 @@ export class PDAService {
           }
       }
     }`;
-  }
-
-  private getIssuedPDACountGQL() {
-    return `
+  static readonly getIssuedPDACountGQL: string = `
     query IssuedPDAsCount($org_gateway_id: String!) {
         issuedPDAsCount(
             filter: { organization: { type: GATEWAY_ID, value: $org_gateway_id } }
         )
     }`;
-  }
-
-  private pagination(max: number): Array<Pagination> {
-    const pages: Array<Pagination> = [];
-
-    if (max <= 100) {
-      pages.push({ take: max, skip: 0 });
-    } else {
-      const pages_count = Math.ceil(max / 100);
-      let take = 100;
-      let skip = 0;
-
-      for (let page = 1; page <= pages_count; page++) {
-        const items_diff = max - page * take;
-
-        pages.push({ take, skip });
-
-        skip += take;
-        take = items_diff < 100 ? items_diff : 100;
-      }
-    }
-
-    return pages;
-  }
 
   async getIssuedStakerPDAs() {
     const ORG_GATEWAY_ID = this.config.get<string>('POKT_ORG_GATEWAY_ID');
 
-    const pdaCountQuery = this.getIssuedPDACountGQL();
-    const pdaQuery = this.getIssuedPDAsGQL();
+    const pdaCountQuery = PDAService.getIssuedPDACountGQL;
+    const pdaQuery = PDAService.getIssuedPDAsGQL;
     const pdaCountVariables: IssuedPDACountVariables = {
       org_gateway_id: ORG_GATEWAY_ID,
     };
@@ -166,88 +95,5 @@ export class PDAService {
     }
 
     return results;
-  }
-
-  private getIssueStakerPdaGQL() {
-    return `
-    mutation CreatePDA(
-      $org_gateway_id: String!
-      $data_model_id: String!
-      $owner: String!
-      $owner_type: UserIdentifierType!
-      $claim: JSON!
-    ) {
-      createPDA(
-          input: {
-              dataModelId: $data_model_id
-              title: "Pocket Network Staker"
-              description: "Servicer or Validator Path"
-              owner: { type: $owner_type, value: $owner }
-              organization: { type: GATEWAY_ID, value: $org_gateway_id }
-              claim: $claim
-          }
-      ) {
-          id
-      }
-    }`;
-  }
-
-  async issueNewStakerPDA(addActions: Array<CoreAddAction>) {
-    const query = this.getIssueStakerPdaGQL();
-    const DATA_MODEL_ID = this.config.get<string>('POKT_STAKER_DATA_MODEL_ID');
-    const ORG_GATEWAY_ID = this.config.get<string>('POKT_ORG_GATEWAY_ID');
-
-    for (let idx = 0; idx < addActions.length; idx++) {
-      const addAction = addActions[idx];
-
-      const variables: IssueNewStakerPDAVariables = {
-        data_model_id: DATA_MODEL_ID,
-        org_gateway_id: ORG_GATEWAY_ID,
-        owner: addAction.owner,
-        owner_type:
-          addAction.node_type === 'non-custodian' ? 'POKT' : 'GATEWAY_ID',
-        claim: {
-          pdaSubtype: addAction.pda_sub_type,
-          pdaType: 'staker',
-          type: addAction.node_type,
-          point: addAction.point,
-          ...(addAction.node_type === 'custodian'
-            ? { serviceDomain: addAction.serviceDomain }
-            : null),
-          wallets: [], // wallets: addAction.wallets,
-        },
-      };
-
-      await this.request<IssueNewStakerPDAResponse>(query, variables);
-    }
-  }
-
-  private getUpdateStakerPdaGQL() {
-    return `
-    mutation updatePDA($PDA_id: String!, $claim: JSON!) {
-      updatePDA(input: { id: $PDA_id, claim: $claim }) {
-          id
-      }
-    }`;
-  }
-
-  async updateIssuedStakerPDAs(updateActions: Array<CoreUpdateAction>) {
-    const query = this.getUpdateStakerPdaGQL();
-
-    for (let idx = 0; idx < updateActions.length; idx++) {
-      const updateAction = updateActions[idx];
-
-      const variables: UpdateStakerPDAVariables = {
-        PDA_id: updateAction.pda_id,
-        claim: {
-          point: updateAction.point,
-          ...(updateAction.wallets
-            ? { wallets: [] /* updateAction.wallets */ }
-            : null),
-        },
-      };
-
-      await this.request<UpdateStakerPDAResponse>(query, variables);
-    }
   }
 }

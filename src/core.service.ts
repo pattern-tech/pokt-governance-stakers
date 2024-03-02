@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron, CronExpression, Timeout } from '@nestjs/schedule';
 import lodash from 'lodash';
+import { time } from 'node:console';
 import { DNSResolver } from '@common/DNS-lookup/dns.resolver';
 import { WinstonProvider } from '@common/winston/winston.provider';
 import { CorePDAsUpcomingActions } from './core.interface';
@@ -8,6 +9,7 @@ import { IssuedStakerPDA } from './pda/interfaces/pda.interface';
 import { PoktScanOutput } from './poktscan/interfaces/pokt-scan.interface';
 import { PDAService } from './pda/pda.service';
 import { PoktScanRetriever } from './poktscan/pokt.retriever';
+import { PDAProducer } from './pda/pda.producer';
 
 @Injectable()
 export class CoreService {
@@ -15,6 +17,7 @@ export class CoreService {
     private readonly poktScanRetriever: PoktScanRetriever,
     private readonly dnsResolver: DNSResolver,
     private readonly pdaService: PDAService,
+    private readonly pdaProducer: PDAProducer,
     private readonly logger: WinstonProvider,
   ) {}
 
@@ -41,6 +44,8 @@ export class CoreService {
               PDA_record.dataAsset.claim.type === 'custodian'
             );
           });
+
+          console.log(PDA_record);
 
           const sumOfStakedTokens = lodash.sumBy(
             stakedNodesData.custodian[domain],
@@ -236,10 +241,18 @@ export class CoreService {
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handler() {
     try {
+      await this.pdaProducer.obliterate();
+
       this.logger.log('Started task', CoreService.name);
 
       const stakedNodesData = await this.poktScanRetriever.retrieve();
+      this.logger.log('all cus and non-cus node`s fetched', CoreService.name, {
+        data: stakedNodesData,
+      });
       const validStakersPDAs = await this.pdaService.getIssuedStakerPDAs();
+      this.logger.log('all PDA`s for pokt orge fetched', CoreService.name, {
+        data: validStakersPDAs,
+      });
 
       const actions = await this.getPDAsUpcomingActions(
         stakedNodesData,
@@ -248,10 +261,13 @@ export class CoreService {
 
       this.logger.debug(actions, CoreService.name);
 
+      this.logger.log('issueing new PDA', CoreService.name);
       // issue new PDAs
-      await this.pdaService.issueNewStakerPDA(actions.add);
+      await this.pdaProducer.issueNewStakerPDA(actions.add);
+      console.log('all PDA`s issued successfully');
+
       // update issued PDAs' point
-      await this.pdaService.updateIssuedStakerPDAs(actions.update);
+      await this.pdaProducer.updateIssuedStakerPDAs(actions.update);
 
       this.logger.log('Completed task', CoreService.name);
     } catch (err) {
