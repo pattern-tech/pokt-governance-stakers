@@ -175,6 +175,7 @@ export class PDAService {
       $data_model_id: String!
       $owner: String!
       $owner_type: UserIdentifierType!
+      $image: String!
       $claim: JSON!
     ) {
       createPDA(
@@ -183,6 +184,7 @@ export class PDAService {
               title: "Pocket Network Staker"
               description: "Servicer or Validator Path"
               owner: { type: $owner_type, value: $owner }
+              image: $image
               organization: { type: GATEWAY_ID, value: $org_gateway_id }
               claim: $claim
           }
@@ -201,6 +203,7 @@ export class PDAService {
       const addAction = addActions[idx];
 
       const variables: IssueNewStakerPDAVariables = {
+        image: addAction.image,
         data_model_id: DATA_MODEL_ID,
         org_gateway_id: ORG_GATEWAY_ID,
         owner: addAction.owner,

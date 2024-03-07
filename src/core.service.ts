@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import lodash from 'lodash';
 import { DNSResolver } from '@common/DNS-lookup/dns.resolver';
@@ -16,6 +17,7 @@ export class CoreService {
     private readonly dnsResolver: DNSResolver,
     private readonly pdaService: PDAService,
     private readonly logger: WinstonProvider,
+    private readonly config: ConfigService,
   ) {}
 
   private async setCustodianActions(
@@ -46,6 +48,7 @@ export class CoreService {
             stakedNodesData.custodian[domain],
             (record) => record.staked_amount,
           );
+          const image = this.config.get<string>('SUPPLY_STAKER_POKTLOGO_URL');
           const wallets = lodash.map(
             stakedNodesData.custodian[domain],
             (record) => {
@@ -66,6 +69,7 @@ export class CoreService {
           } else {
             // Issue new PDA
             actions.add.push({
+              image: image,
               point: sumOfStakedTokens,
               node_type: 'custodian',
               pda_sub_type: 'Validator',
@@ -138,6 +142,7 @@ export class CoreService {
           );
         });
 
+        const image = this.config.get<string>('SUPPLY_STAKER_POKTLOGO_URL');
         const sumOfStakedTokens = lodash.sumBy(
           stakedNodesData.non_custodian[walletAddress],
           (record) => record.staked_amount,
@@ -163,6 +168,7 @@ export class CoreService {
           // Issue new PDA
           actions.add.push({
             point: sumOfStakedTokens,
+            image: image,
             node_type: 'non-custodian',
             pda_sub_type: 'Validator',
             owner: walletAddress,
