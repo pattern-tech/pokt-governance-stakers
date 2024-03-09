@@ -24,4 +24,5 @@ export interface WPoktLiquidityV2Response {
 export interface WPoktLiquidityV2Variables {
   Users_Wallet_Addr: Array<string>;
   WPokt_ID: string;
+  Pool_ID: string;
 }
