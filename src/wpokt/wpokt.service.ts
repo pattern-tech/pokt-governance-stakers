@@ -72,9 +72,13 @@ export class WPoktService {
 
   private getUsersWPoktLiquidityV2GQL() {
     return `
-    query UsersLiquidity($Users_Wallet_Addr: [String!]!, $WPokt_ID: String!) {
+    query UsersLiquidity($Users_Wallet_Addr: [String!]!, $WPokt_ID: String!, $Pool_ID: String!) {
         positions: liquidityPositions(
-          where: {pair_: {or: [{token0: $WPokt_ID}, {token1: $WPokt_ID}]}, user_in: $Users_Wallet_Addr}
+          where: {
+            pair: $Pool_ID,
+            pair_: {or: [{token0: $WPokt_ID}, {token1: $WPokt_ID}]}, 
+            user_in: $Users_Wallet_Addr
+          }
         ) {
           user {
             id
@@ -117,8 +121,9 @@ export class WPoktService {
   private async getUsersWPoktLiquidityV2(usersWalletAddr: Array<string>) {
     const query = this.getUsersWPoktLiquidityV2GQL();
     const variables: WPoktLiquidityV2Variables = {
-      Users_Wallet_Addr: usersWalletAddr,
+      Users_Wallet_Addr: lodash.map(usersWalletAddr, lodash.toLower),
       WPokt_ID: this.config.get<string>('UNISWAP_WPOKT_TOKEN_ID'),
+      Pool_ID: this.config.get<string>('UNISWAP_V2_WPOKT_POOL_ID'),
     };
 
     return this.requestV2<WPoktLiquidityV2Response>(query, variables);
@@ -127,7 +132,7 @@ export class WPoktService {
   private async getUsersWPoktLiquidityV3(usersWalletAddr: Array<string>) {
     const query = this.getUsersWPoktLiquidityV3GQL();
     const variables: WPoktLiquidityV3Variables = {
-      Users_Wallet_Addr: usersWalletAddr,
+      Users_Wallet_Addr: lodash.map(usersWalletAddr, lodash.toLower),
       WPokt_ID: this.config.get<string>('UNISWAP_WPOKT_TOKEN_ID'),
     };
 
