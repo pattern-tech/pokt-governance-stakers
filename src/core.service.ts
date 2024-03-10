@@ -275,6 +275,7 @@ export class CoreService {
       const PDARecord = validStakersPDAs[index];
       const PDARecordGatewayID = PDARecord.dataAsset.owner.gatewayId;
       const gatewayIDLiquidity = GIDsLiquidity[PDARecordGatewayID];
+      const image = this.config.get<string>('LIQUIDITY_STAKER_POKTLOGO_URL');
 
       if (PDARecord.dataAsset.claim.pdaSubtype === 'Liquidity Provider') {
         if (PDARecord.dataAsset.claim.point !== gatewayIDLiquidity) {
@@ -289,6 +290,7 @@ export class CoreService {
         if (gatewayIDLiquidity > 0 && !updatedPDAsID.includes(PDARecord.id)) {
           actions.add.push({
             owner: PDARecordGatewayID,
+            image: image,
             pda_sub_type: 'Liquidity Provider',
             point: gatewayIDLiquidity,
           });
