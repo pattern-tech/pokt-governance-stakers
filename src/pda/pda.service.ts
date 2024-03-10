@@ -15,6 +15,8 @@ import {
   IssuedStakerPDA,
   UpdateStakerPDAResponse,
   UpdateStakerPDAVariables,
+  UserAuthenticationsResponse,
+  UserAuthenticationsVariables,
 } from './interfaces/pda.interface';
 
 @Injectable()
@@ -212,7 +214,7 @@ export class PDAService {
         claim: {
           pdaSubtype: addAction.pda_sub_type,
           pdaType: 'staker',
-          type: addAction.node_type,
+          ...(addAction.node_type ? { type: addAction.node_type } : null),
           point: addAction.point,
           ...(addAction.node_type === 'custodian'
             ? { serviceDomain: addAction.serviceDomain }
@@ -252,5 +254,39 @@ export class PDAService {
 
       await this.request<UpdateStakerPDAResponse>(query, variables);
     }
+  }
+
+  private getUserAuthenticationsGQL() {
+    return `
+    query UserAuthentications($user_GID: String!) {
+      userAuthentications(user: { type: GATEWAY_ID, value: $user_GID }) {
+        address
+        chain
+      }
+    }`;
+  }
+
+  private async getUserAuthentications(user_GID: string) {
+    const query = this.getUserAuthenticationsGQL();
+    const variables: UserAuthenticationsVariables = { user_GID };
+
+    return this.request<UserAuthenticationsResponse>(query, variables);
+  }
+
+  async getUserEVMWallets(user_GID: string) {
+    const result: Array<string> = [];
+
+    const userAuthentications = await this.getUserAuthentications(user_GID);
+    const userAuthMethods = userAuthentications.data.userAuthentications;
+
+    for (let index = 0; index < userAuthMethods.length; index++) {
+      const userAuthMethod = userAuthMethods[index];
+
+      if (userAuthMethod.chain === 'EVM') {
+        result.push(userAuthMethod.address);
+      }
+    }
+
+    return result;
   }
 }

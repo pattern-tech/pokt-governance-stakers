@@ -4,6 +4,7 @@ import {
   PDAType,
   StakerPDASubType,
   StakerPDAType,
+  UserAuthenticationChain,
 } from '../types/pda.type';
 
 interface PDAClaimBase<Type extends PDAType> {
@@ -24,6 +25,12 @@ interface StakerPDAClaim {
     amount: number;
   }>;
 }
+
+interface UserAuthenticationBlock {
+  address: string;
+  chain: UserAuthenticationChain | null;
+}
+
 export interface IssuedPDA {
   id: string;
   status: 'Valid' | 'Suspended' | 'Revoked' | 'Expired';
@@ -98,4 +105,14 @@ export interface UpdateStakerPDAResponse {
       id: string;
     };
   };
+}
+
+export interface UserAuthenticationsResponse {
+  data: {
+    userAuthentications: Array<UserAuthenticationBlock>;
+  };
+}
+
+export interface UserAuthenticationsVariables {
+  user_GID: string;
 }

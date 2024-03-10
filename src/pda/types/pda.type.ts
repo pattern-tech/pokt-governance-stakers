@@ -1,4 +1,5 @@
 export type PDAType = 'citizen' | 'builder' | 'staker';
+export type UserAuthenticationChain = 'EVM' | 'POKT' | 'SOL';
 
 export type CitizenPDASubType = 'POKT DNA' | 'POKT DAO';
 

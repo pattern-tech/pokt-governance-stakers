@@ -13,10 +13,10 @@ export interface CoreAddAction {
   image: string;
   point: number;
   pda_sub_type: StakerPDASubType;
-  node_type: StakerPDAType;
+  node_type?: StakerPDAType;
   owner: string;
   serviceDomain?: string;
-  wallets: Array<{
+  wallets?: Array<{
     address: string;
     amount: number;
   }>;
