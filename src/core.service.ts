@@ -3,12 +3,12 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import lodash from 'lodash';
 import { DNSResolver } from '@common/DNS-lookup/dns.resolver';
 import { WinstonProvider } from '@common/winston/winston.provider';
-import { CorePDAsUpcomingActions } from './core.interface';
 import { IssuedStakerPDA } from './pda/interfaces/pda.interface';
 import { PoktScanOutput } from './poktscan/interfaces/pokt-scan.interface';
 import { PDAService } from './pda/pda.service';
 import { PoktScanRetriever } from './poktscan/pokt.retriever';
 import { WPoktService } from './wpokt/wpokt.service';
+import { PDAQueue } from './pda/pda.queue';
 
 @Injectable()
 export class CoreService {
@@ -18,12 +18,12 @@ export class CoreService {
     private readonly pdaService: PDAService,
     private readonly wpoktService: WPoktService,
     private readonly logger: WinstonProvider,
+    private readonly pdaQueue: PDAQueue,
   ) {}
 
   private async setCustodianActions(
     stakedNodesData: PoktScanOutput,
     validStakersPDAs: Array<IssuedStakerPDA>,
-    actions: CorePDAsUpcomingActions,
   ) {
     this.logger.log('Started set custodian actions', CoreService.name);
 
@@ -48,32 +48,27 @@ export class CoreService {
             stakedNodesData.custodian[domain],
             (record) => record.staked_amount,
           );
-          const wallets = lodash.map(
-            stakedNodesData.custodian[domain],
-            (record) => {
-              return {
-                address: record.wallet_address,
-                amount: record.staked_amount,
-              };
-            },
-          );
 
           if (PDA_record) {
             // update PDA point
-            actions.update.push({
-              pda_id: PDA_record.id,
-              point: sumOfStakedTokens,
-              wallets: wallets,
+            this.pdaQueue.addJob({
+              action: 'update',
+              payload: {
+                pda_id: PDA_record.id,
+                point: sumOfStakedTokens,
+              },
             });
           } else {
             // Issue new PDA
-            actions.add.push({
-              point: sumOfStakedTokens,
-              node_type: 'custodian',
-              pda_sub_type: 'Validator',
-              owner: resolvedGatewayID,
-              serviceDomain: domain,
-              wallets: wallets,
+            this.pdaQueue.addJob({
+              action: 'add',
+              payload: {
+                point: sumOfStakedTokens,
+                node_type: 'custodian',
+                pda_sub_type: 'Validator',
+                owner: resolvedGatewayID,
+                serviceDomain: domain,
+              },
             });
           }
         }
@@ -106,10 +101,12 @@ export class CoreService {
 
         if (!isPDAValid) {
           // update zero point
-          actions.update.push({
-            pda_id: PDA_record.id,
-            point: 0,
-            wallets: [],
+          this.pdaQueue.addJob({
+            action: 'update',
+            payload: {
+              pda_id: PDA_record.id,
+              point: 0,
+            },
           });
         }
       }
@@ -121,7 +118,6 @@ export class CoreService {
   private async setNonCustodianActions(
     stakedNodesData: PoktScanOutput,
     validStakersPDAs: Array<IssuedStakerPDA>,
-    actions: CorePDAsUpcomingActions,
   ) {
     this.logger.log('Started set nonCustodian actions', CoreService.name);
 
@@ -134,7 +130,8 @@ export class CoreService {
       ) {
         const PDA_record = lodash.find(validStakersPDAs, (PDA_record) => {
           return (
-            PDA_record.dataAsset.claim.wallets[0]?.address === walletAddress &&
+            PDA_record.dataAsset.claim.wallets?.[0]?.address ===
+              walletAddress &&
             PDA_record.dataAsset.claim.pdaSubtype === 'Validator' &&
             PDA_record.dataAsset.claim.type === 'non-custodian'
           );
@@ -144,31 +141,30 @@ export class CoreService {
           stakedNodesData.non_custodian[walletAddress],
           (record) => record.staked_amount,
         );
-        const wallets = lodash.map(
-          stakedNodesData.non_custodian[walletAddress],
-          (record) => {
-            return {
-              address: record.wallet_address,
-              amount: record.staked_amount,
-            };
-          },
-        );
+
+        const wallets = [{ address: walletAddress, amount: sumOfStakedTokens }];
 
         if (PDA_record) {
           // update PDA point
-          actions.update.push({
-            pda_id: PDA_record.id,
-            point: sumOfStakedTokens,
-            wallets: wallets,
+          this.pdaQueue.addJob({
+            action: 'update',
+            payload: {
+              pda_id: PDA_record.id,
+              point: sumOfStakedTokens,
+              wallets: wallets,
+            },
           });
         } else {
           // Issue new PDA
-          actions.add.push({
-            point: sumOfStakedTokens,
-            node_type: 'non-custodian',
-            pda_sub_type: 'Validator',
-            owner: walletAddress,
-            wallets: wallets,
+          this.pdaQueue.addJob({
+            action: 'add',
+            payload: {
+              point: sumOfStakedTokens,
+              node_type: 'non-custodian',
+              pda_sub_type: 'Validator',
+              owner: walletAddress,
+              wallets: wallets,
+            },
           });
         }
       }
@@ -191,7 +187,7 @@ export class CoreService {
           const nodeRecordsWallet = nodeRecordsWallets[node_idx];
 
           if (
-            PDA_record.dataAsset.claim.wallets[0]?.address ===
+            PDA_record.dataAsset.claim.wallets?.[0]?.address ===
               nodeRecordsWallet &&
             PDA_record.dataAsset.claim.pdaSubtype === 'Validator'
           ) {
@@ -202,9 +198,13 @@ export class CoreService {
 
         if (!isPDAValid) {
           // update zero point
-          actions.update.push({
-            pda_id: PDA_record.id,
-            point: 0,
+          this.pdaQueue.addJob({
+            action: 'update',
+            payload: {
+              pda_id: PDA_record.id,
+              point: 0,
+              wallets: [],
+            },
           });
         }
       }
@@ -216,53 +216,28 @@ export class CoreService {
   private async getValidatorPDAsUpcomingActions(
     stakedNodesData: PoktScanOutput,
     validStakersPDAs: Array<IssuedStakerPDA>,
-  ): Promise<CorePDAsUpcomingActions> {
-    const actions: CorePDAsUpcomingActions = {
-      add: [],
-      update: [],
-    };
-
+  ) {
     // Custodian Section
-    await this.setCustodianActions(stakedNodesData, validStakersPDAs, actions);
+    await this.setCustodianActions(stakedNodesData, validStakersPDAs);
 
     // Non-Custodian Section
-    await this.setNonCustodianActions(
-      stakedNodesData,
-      validStakersPDAs,
-      actions,
-    );
-
-    return actions;
+    await this.setNonCustodianActions(stakedNodesData, validStakersPDAs);
   }
 
   private async recalculateValidatorPDAs(
     validStakersPDAs: Array<IssuedStakerPDA>,
   ) {
     const stakedNodesData = await this.poktScanRetriever.retrieve();
-    const actions = await this.getValidatorPDAsUpcomingActions(
+    await this.getValidatorPDAsUpcomingActions(
       stakedNodesData,
       validStakersPDAs,
     );
-
-    this.logger.debug(
-      `Validator upcoming actions: ${JSON.stringify(actions)}`,
-      CoreService.name,
-    );
-
-    // issue new PDAs
-    await this.pdaService.issueNewStakerPDA(actions.add);
-    // update issued PDAs' point
-    await this.pdaService.updateIssuedStakerPDAs(actions.update);
   }
 
   private async getLiquidityProviderPDAsUpcomingActions(
     validStakersPDAs: Array<IssuedStakerPDA>,
     GIDsLiquidity: Record<string, number>,
   ) {
-    const actions: CorePDAsUpcomingActions = {
-      add: [],
-      update: [],
-    };
     const updatedPDAsID: Array<string> = [];
 
     for (let index = 0; index < validStakersPDAs.length; index++) {
@@ -272,25 +247,29 @@ export class CoreService {
 
       if (PDARecord.dataAsset.claim.pdaSubtype === 'Liquidity Provider') {
         if (PDARecord.dataAsset.claim.point !== gatewayIDLiquidity) {
-          actions.update.push({
-            pda_id: PDARecord.id,
-            point: gatewayIDLiquidity,
+          this.pdaQueue.addJob({
+            action: 'update',
+            payload: {
+              pda_id: PDARecord.id,
+              point: gatewayIDLiquidity,
+            },
           });
         }
 
         updatedPDAsID.push(PDARecord.id);
       } else {
         if (gatewayIDLiquidity > 0 && !updatedPDAsID.includes(PDARecord.id)) {
-          actions.add.push({
-            owner: PDARecordGatewayID,
-            pda_sub_type: 'Liquidity Provider',
-            point: gatewayIDLiquidity,
+          this.pdaQueue.addJob({
+            action: 'add',
+            payload: {
+              owner: PDARecordGatewayID,
+              pda_sub_type: 'Liquidity Provider',
+              point: gatewayIDLiquidity,
+            },
           });
         }
       }
     }
-
-    return actions;
   }
 
   private async recalculateLiquidityProviderPDAs(
@@ -311,20 +290,10 @@ export class CoreService {
     const GIDsLiquidity =
       await this.wpoktService.getUsersWPoktLiquidity(GIDsWalletAddresses);
 
-    const actions = await this.getLiquidityProviderPDAsUpcomingActions(
+    await this.getLiquidityProviderPDAsUpcomingActions(
       validStakersPDAs,
       GIDsLiquidity,
     );
-
-    this.logger.debug(
-      `Liquidity Provider upcoming actions: ${JSON.stringify(actions)}`,
-      CoreService.name,
-    );
-
-    // issue new PDAs
-    await this.pdaService.issueNewStakerPDA(actions.add);
-    // update issued PDAs' point
-    await this.pdaService.updateIssuedStakerPDAs(actions.update);
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
@@ -334,11 +303,17 @@ export class CoreService {
 
       const validStakersPDAs = await this.pdaService.getIssuedStakerPDAs();
 
+      // Initialize pda job listener
+      this.pdaQueue.reset();
+      const pdaJobListenerID = await this.pdaService.jobListener(2000, 10);
       // Staker -> Validator PDAs
       await this.recalculateValidatorPDAs(validStakersPDAs);
 
       // Staker -> Liquidity provider PDAs
       await this.recalculateLiquidityProviderPDAs(validStakersPDAs);
+
+      await this.pdaQueue.wait();
+      await this.pdaService.stopJobListener(pdaJobListenerID);
 
       this.logger.log('Completed task', CoreService.name);
     } catch (err) {

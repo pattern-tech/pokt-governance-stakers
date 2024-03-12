@@ -1,3 +1,5 @@
+import { IssuePDAJob, UpdatePDAJob } from '../interfaces/pda.interface';
+
 export type PDAType = 'citizen' | 'builder' | 'staker';
 export type UserAuthenticationChain = 'EVM' | 'POKT' | 'SOL';
 
@@ -15,3 +17,5 @@ export type BuilderPDASubType =
 
 export type StakerPDASubType = 'Validator' | 'Liquidity Provider' | 'Gateway';
 export type StakerPDAType = 'custodian' | 'non-custodian';
+
+export type PDAJob = IssuePDAJob | UpdatePDAJob;
