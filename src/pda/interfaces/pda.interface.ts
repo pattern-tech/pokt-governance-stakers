@@ -1,3 +1,4 @@
+import { CoreAddAction, CoreUpdateAction } from '../../core.interface';
 import {
   BuilderPDASubType,
   CitizenPDASubType,
@@ -113,4 +114,13 @@ export interface UserAuthenticationsResponse {
 
 export interface UserAuthenticationsVariables {
   user_GID: string;
+}
+
+export interface IssuePDAJob {
+  action: 'add';
+  payload: CoreAddAction;
+}
+export interface UpdatePDAJob {
+  action: 'update';
+  payload: CoreUpdateAction;
 }
