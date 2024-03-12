@@ -48,22 +48,12 @@ export class CoreService {
             stakedNodesData.custodian[domain],
             (record) => record.staked_amount,
           );
-          const wallets = lodash.map(
-            stakedNodesData.custodian[domain],
-            (record) => {
-              return {
-                address: record.wallet_address,
-                amount: record.staked_amount,
-              };
-            },
-          );
 
           if (PDA_record) {
             // update PDA point
             actions.update.push({
               pda_id: PDA_record.id,
               point: sumOfStakedTokens,
-              wallets: wallets,
             });
           } else {
             // Issue new PDA
@@ -73,7 +63,6 @@ export class CoreService {
               pda_sub_type: 'Validator',
               owner: resolvedGatewayID,
               serviceDomain: domain,
-              wallets: wallets,
             });
           }
         }
@@ -109,7 +98,6 @@ export class CoreService {
           actions.update.push({
             pda_id: PDA_record.id,
             point: 0,
-            wallets: [],
           });
         }
       }
@@ -134,7 +122,8 @@ export class CoreService {
       ) {
         const PDA_record = lodash.find(validStakersPDAs, (PDA_record) => {
           return (
-            PDA_record.dataAsset.claim.wallets[0]?.address === walletAddress &&
+            PDA_record.dataAsset.claim.wallets?.[0]?.address ===
+              walletAddress &&
             PDA_record.dataAsset.claim.pdaSubtype === 'Validator' &&
             PDA_record.dataAsset.claim.type === 'non-custodian'
           );
@@ -144,15 +133,8 @@ export class CoreService {
           stakedNodesData.non_custodian[walletAddress],
           (record) => record.staked_amount,
         );
-        const wallets = lodash.map(
-          stakedNodesData.non_custodian[walletAddress],
-          (record) => {
-            return {
-              address: record.wallet_address,
-              amount: record.staked_amount,
-            };
-          },
-        );
+
+        const wallets = [{ address: walletAddress, amount: sumOfStakedTokens }];
 
         if (PDA_record) {
           // update PDA point
@@ -191,7 +173,7 @@ export class CoreService {
           const nodeRecordsWallet = nodeRecordsWallets[node_idx];
 
           if (
-            PDA_record.dataAsset.claim.wallets[0]?.address ===
+            PDA_record.dataAsset.claim.wallets?.[0]?.address ===
               nodeRecordsWallet &&
             PDA_record.dataAsset.claim.pdaSubtype === 'Validator'
           ) {
@@ -205,6 +187,7 @@ export class CoreService {
           actions.update.push({
             pda_id: PDA_record.id,
             point: 0,
+            wallets: [],
           });
         }
       }

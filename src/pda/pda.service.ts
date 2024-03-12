@@ -216,7 +216,7 @@ export class PDAService {
           ...(addAction.node_type === 'custodian'
             ? { serviceDomain: addAction.serviceDomain }
             : null),
-          wallets: [], // wallets: addAction.wallets,
+          wallets: addAction.wallets,
         },
       };
 
@@ -243,9 +243,7 @@ export class PDAService {
         PDA_id: updateAction.pda_id,
         claim: {
           point: updateAction.point,
-          ...(updateAction.wallets
-            ? { wallets: [] /* updateAction.wallets */ }
-            : null),
+          ...(updateAction.wallets ? { wallets: updateAction.wallets } : null),
         },
       };
 
