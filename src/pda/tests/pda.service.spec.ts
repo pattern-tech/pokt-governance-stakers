@@ -10,9 +10,11 @@ import {
   IssuedPDAsResponse,
   IssuedStakerPDA,
   UpdateStakerPDAVariables,
+  UserAuthenticationsVariables,
 } from '../interfaces/pda.interface';
 import { CoreAddAction, CoreUpdateAction } from 'src/core.interface';
 import { PDAService } from '../pda.service';
+import { PDAQueue } from '../pda.queue';
 
 // Mock the WinstonProvider
 jest.mock('@common/winston/winston.provider');
@@ -23,17 +25,18 @@ describe('PDAService', () => {
   let axios: HttpService;
   let config: ConfigService;
   let logger: WinstonProvider;
+  let queue: PDAQueue;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [HttpModule, ConfigModule],
-      providers: [PDAService, WinstonProvider],
+      providers: [PDAService, WinstonProvider, PDAQueue],
     }).compile();
     service = module.get<PDAService>(PDAService);
     axios = module.get<HttpService>(HttpService);
     config = module.get<ConfigService>(ConfigService);
     logger = module.get<WinstonProvider>(WinstonProvider);
-
+    queue = new PDAQueue();
     jest.clearAllMocks();
   });
 
@@ -710,6 +713,49 @@ and call method request with correct parameters`, async () => {
           point: 10,
         },
       });
+    });
+  });
+
+  describe('getUserAuthenticationsGQL', () => {
+    test('Should be defined', () => {
+      // Assert
+      expect(service['getUserAuthenticationsGQL']).toBeDefined();
+    });
+    test('Should return getUpdateStakerPda graphQL query', () => {
+      // Assert
+      expect(service['getUserAuthenticationsGQL']()).toBe(`
+    query UserAuthentications($user_GID: String!) {
+      userAuthentications(user: { type: GATEWAY_ID, value: $user_GID }) {
+        address
+        chain
+      }
+    }`);
+    });
+  });
+
+  describe('getUserAuthentications', () => {
+    const user_GID: string = 'mockUser';
+    const variables: UserAuthenticationsVariables = { user_GID };
+    let userAuthenticationsVariables: UserAuthenticationsVariables;
+    beforeEach(() => {
+      jest
+        .spyOn(service as any, 'getUserAuthenticationsGQL')
+        .mockReturnValue('');
+      jest
+        .spyOn(service as any, 'request')
+        .mockReturnValue(userAuthenticationsVariables);
+    });
+    test('Should call getUserAuthenticationsGQL method', async () => {
+      // Act
+      await service['getUserAuthentications'](user_GID);
+      // Assert
+      expect(service['getUserAuthenticationsGQL']).toHaveBeenCalled();
+    });
+    test('Should call request method with the correct parameters', async () => {
+      // Act
+      await service['getUserAuthentications'](user_GID);
+      // Assert
+      expect(service['request']).toHaveBeenCalledWith('', variables);
     });
   });
 });
