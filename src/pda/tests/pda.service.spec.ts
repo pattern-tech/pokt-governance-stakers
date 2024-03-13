@@ -10,6 +10,7 @@ import {
   IssuedPDAsResponse,
   IssuedStakerPDA,
   UpdateStakerPDAVariables,
+  UserAuthenticationsResponse,
   UserAuthenticationsVariables,
 } from '../interfaces/pda.interface';
 import { CoreAddAction, CoreUpdateAction } from 'src/core.interface';
@@ -756,6 +757,60 @@ and call method request with correct parameters`, async () => {
       await service['getUserAuthentications'](user_GID);
       // Assert
       expect(service['request']).toHaveBeenCalledWith('', variables);
+    });
+  });
+
+  describe('getUserEVMWallets', () => {
+    const user_GID: string = 'mockUser';
+    const authreturnValue: UserAuthenticationsResponse = {
+      data: {
+        userAuthentications: [
+          {
+            address: '0x97d07b09537088985d5ec3b5ba654e505244b99f',
+            chain: 'EVM',
+          },
+          {
+            address: 'example@gmail.com',
+            chain: null,
+          },
+        ],
+      },
+    };
+    beforeEach(() => {
+      jest
+        .spyOn(service as any, 'getUserAuthentications')
+        .mockResolvedValue(authreturnValue);
+    });
+    test('Should call getUserAuthentications method with correct parameter', async () => {
+      await service.getUserEVMWallets(user_GID);
+      expect(service['getUserAuthentications']).toHaveBeenCalledWith(user_GID);
+    });
+    test('Should store related EVM address', async () => {
+      expect(await service.getUserEVMWallets(user_GID)).toEqual([
+        '0x97d07b09537088985d5ec3b5ba654e505244b99f',
+      ]);
+    });
+    test('Should not store address when chain is not equal with "EVM"', async () => {
+      // Arrange
+      const authreturnValue = {
+        data: {
+          userAuthentications: [
+            {
+              address: '0x97d07b09537088985d5ec3b5ba654e505244b99f',
+              chain: 'someChain',
+            },
+            {
+              address: '0x97d07bwlefwmcpwir23423m3cr21qcr23424cc23',
+              chain: 'someOtherChain',
+            },
+          ],
+        },
+      };
+      jest
+        .spyOn(service as any, 'getUserAuthentications')
+        .mockResolvedValue(authreturnValue);
+      // Assert
+      expect(await service.getUserEVMWallets(user_GID)).toEqual([]);
     });
   });
 });
