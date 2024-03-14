@@ -1,3 +1,4 @@
+import { CoreAddAction, CoreUpdateAction } from '../../core.interface';
 import {
   BuilderPDASubType,
   CitizenPDASubType,
@@ -49,6 +50,15 @@ export interface IssuedPDA {
 export interface IssuedStakerPDA extends IssuedPDA {
   dataAsset: {
     claim: PDAClaimBase<'staker'> & StakerPDAClaim;
+    owner: {
+      gatewayId: string;
+    };
+  };
+}
+
+export interface IssuedCitizenAndStakerPDA extends IssuedPDA {
+  dataAsset: {
+    claim: PDAClaimBase<'citizen'> | (PDAClaimBase<'staker'> & StakerPDAClaim);
     owner: {
       gatewayId: string;
     };
@@ -115,4 +125,13 @@ export interface UserAuthenticationsResponse {
 
 export interface UserAuthenticationsVariables {
   user_GID: string;
+}
+
+export interface IssuePDAJob {
+  action: 'add';
+  payload: CoreAddAction;
+}
+export interface UpdatePDAJob {
+  action: 'update';
+  payload: CoreUpdateAction;
 }

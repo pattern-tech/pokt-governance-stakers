@@ -8,16 +8,17 @@ import { Pagination } from './interfaces/common.interface';
 import {
   IssueNewStakerPDAResponse,
   IssueNewStakerPDAVariables,
+  IssuedCitizenAndStakerPDA,
   IssuedPDACountResponse,
   IssuedPDACountVariables,
   IssuedPDAsResponse,
   IssuedPDAsVariables,
-  IssuedStakerPDA,
   UpdateStakerPDAResponse,
   UpdateStakerPDAVariables,
   UserAuthenticationsResponse,
   UserAuthenticationsVariables,
 } from './interfaces/pda.interface';
+import { PDAQueue } from './pda.queue';
 
 @Injectable()
 export class PDAService {
@@ -25,6 +26,7 @@ export class PDAService {
     private readonly config: ConfigService,
     private readonly axios: HttpService,
     private readonly logger: WinstonProvider,
+    private readonly pdaQueue: PDAQueue,
   ) {}
 
   private async request<T>(
@@ -119,7 +121,7 @@ export class PDAService {
     return pages;
   }
 
-  async getIssuedStakerPDAs() {
+  async getIssuedCitizenAndStakerPDAs() {
     const ORG_GATEWAY_ID = this.config.get<string>('POKT_ORG_GATEWAY_ID');
 
     const pdaCountQuery = this.getIssuedPDACountGQL();
@@ -150,7 +152,7 @@ export class PDAService {
     }
 
     const responses: Array<IssuedPDAsResponse> = await Promise.all(promises);
-    const results: Array<IssuedStakerPDA> = [];
+    const results: Array<IssuedCitizenAndStakerPDA> = [];
 
     for (let res_idx = 0; res_idx < responses.length; res_idx++) {
       const PDAs = responses[res_idx].data.issuedPDAs;
@@ -160,9 +162,10 @@ export class PDAService {
 
         if (
           PDA.status === 'Valid' &&
-          PDA.dataAsset.claim.pdaType === 'staker'
+          (PDA.dataAsset.claim.pdaType === 'staker' ||
+            PDA.dataAsset.claim.pdaType === 'citizen')
         ) {
-          results.push(PDA as IssuedStakerPDA);
+          results.push(PDA as IssuedCitizenAndStakerPDA);
         }
       }
     }
@@ -196,35 +199,31 @@ export class PDAService {
     }`;
   }
 
-  async issueNewStakerPDA(addActions: Array<CoreAddAction>) {
+  async issueNewStakerPDA(addAction: CoreAddAction) {
     const query = this.getIssueStakerPdaGQL();
     const DATA_MODEL_ID = this.config.get<string>('POKT_STAKER_DATA_MODEL_ID');
     const ORG_GATEWAY_ID = this.config.get<string>('POKT_ORG_GATEWAY_ID');
 
-    for (let idx = 0; idx < addActions.length; idx++) {
-      const addAction = addActions[idx];
+    const variables: IssueNewStakerPDAVariables = {
+      image: addAction.image,
+      data_model_id: DATA_MODEL_ID,
+      org_gateway_id: ORG_GATEWAY_ID,
+      owner: addAction.owner,
+      owner_type:
+        addAction.node_type === 'non-custodian' ? 'POKT' : 'GATEWAY_ID',
+      claim: {
+        pdaSubtype: addAction.pda_sub_type,
+        pdaType: 'staker',
+        ...(addAction.node_type ? { type: addAction.node_type } : null),
+        point: addAction.point,
+        ...(addAction.node_type === 'custodian'
+          ? { serviceDomain: addAction.serviceDomain }
+          : null),
+        wallets: addAction.wallets,
+      },
+    };
 
-      const variables: IssueNewStakerPDAVariables = {
-        image: addAction.image,
-        data_model_id: DATA_MODEL_ID,
-        org_gateway_id: ORG_GATEWAY_ID,
-        owner: addAction.owner,
-        owner_type:
-          addAction.node_type === 'non-custodian' ? 'POKT' : 'GATEWAY_ID',
-        claim: {
-          pdaSubtype: addAction.pda_sub_type,
-          pdaType: 'staker',
-          ...(addAction.node_type ? { type: addAction.node_type } : null),
-          point: addAction.point,
-          ...(addAction.node_type === 'custodian'
-            ? { serviceDomain: addAction.serviceDomain }
-            : null),
-          wallets: [], // wallets: addAction.wallets,
-        },
-      };
-
-      await this.request<IssueNewStakerPDAResponse>(query, variables);
-    }
+    await this.request<IssueNewStakerPDAResponse>(query, variables);
   }
 
   private getUpdateStakerPdaGQL() {
@@ -236,24 +235,18 @@ export class PDAService {
     }`;
   }
 
-  async updateIssuedStakerPDAs(updateActions: Array<CoreUpdateAction>) {
+  async updateIssuedStakerPDA(updateAction: CoreUpdateAction) {
     const query = this.getUpdateStakerPdaGQL();
 
-    for (let idx = 0; idx < updateActions.length; idx++) {
-      const updateAction = updateActions[idx];
+    const variables: UpdateStakerPDAVariables = {
+      PDA_id: updateAction.pda_id,
+      claim: {
+        point: updateAction.point,
+        ...(updateAction.wallets ? { wallets: updateAction.wallets } : null),
+      },
+    };
 
-      const variables: UpdateStakerPDAVariables = {
-        PDA_id: updateAction.pda_id,
-        claim: {
-          point: updateAction.point,
-          ...(updateAction.wallets
-            ? { wallets: [] /* updateAction.wallets */ }
-            : null),
-        },
-      };
-
-      await this.request<UpdateStakerPDAResponse>(query, variables);
-    }
+    await this.request<UpdateStakerPDAResponse>(query, variables);
   }
 
   private getUserAuthenticationsGQL() {
@@ -288,5 +281,30 @@ export class PDAService {
     }
 
     return result;
+  }
+
+  async jobListener(latency: number, chuckSize: number) {
+    return setInterval(async () => {
+      const jobs = this.pdaQueue.popJobs(chuckSize);
+      const promises = [];
+
+      for (let index = 0; index < jobs?.length; index++) {
+        const job = jobs[index];
+
+        if (job.action === 'add') {
+          promises.push(this.issueNewStakerPDA(job.payload));
+        } else {
+          promises.push(this.updateIssuedStakerPDA(job.payload));
+        }
+      }
+
+      if (promises.length > 0) {
+        await Promise.all(promises);
+      }
+    }, latency);
+  }
+
+  async stopJobListener(listenerID: NodeJS.Timeout) {
+    clearInterval(listenerID);
   }
 }
