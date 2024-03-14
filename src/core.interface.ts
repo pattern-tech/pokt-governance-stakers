@@ -10,6 +10,7 @@ export interface CoreUpdateAction {
 }
 
 export interface CoreAddAction {
+  image: string;
   point: number;
   pda_sub_type: StakerPDASubType;
   node_type?: StakerPDAType;
