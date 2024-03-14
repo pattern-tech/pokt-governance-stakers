@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import lodash from 'lodash';
 import { DNSResolver } from '@common/DNS-lookup/dns.resolver';
@@ -21,6 +22,7 @@ export class CoreService {
     private readonly pdaService: PDAService,
     private readonly wpoktService: WPoktService,
     private readonly logger: WinstonProvider,
+    private readonly config: ConfigService,
     private readonly pdaQueue: PDAQueue,
   ) {}
 
@@ -29,6 +31,9 @@ export class CoreService {
     validStakersPDAs: Array<IssuedStakerPDA>,
   ) {
     this.logger.log('Started set custodian actions', CoreService.name);
+    const STAKER_POKT_LOGO_URL = this.config.get<string>(
+      'SUPPLY_STAKER_POKT_LOGO_URL',
+    );
 
     for (const domain in stakedNodesData.custodian) {
       if (
@@ -67,6 +72,7 @@ export class CoreService {
               action: 'add',
               payload: {
                 point: sumOfStakedTokens,
+                image: STAKER_POKT_LOGO_URL,
                 node_type: 'custodian',
                 pda_sub_type: 'Validator',
                 owner: resolvedGatewayID,
@@ -123,6 +129,9 @@ export class CoreService {
     validStakersPDAs: Array<IssuedStakerPDA>,
   ) {
     this.logger.log('Started set nonCustodian actions', CoreService.name);
+    const STAKER_POKT_LOGO_URL = this.config.get<string>(
+      'SUPPLY_STAKER_POKT_LOGO_URL',
+    );
 
     for (const walletAddress in stakedNodesData.non_custodian) {
       if (
@@ -163,6 +172,7 @@ export class CoreService {
             action: 'add',
             payload: {
               point: sumOfStakedTokens,
+              image: STAKER_POKT_LOGO_URL,
               node_type: 'non-custodian',
               pda_sub_type: 'Validator',
               owner: walletAddress,
@@ -243,6 +253,9 @@ export class CoreService {
   ) {
     const havingLPPdaGIDs: Array<string> = [];
     const uniqueGIDs = Object.keys(GIDsLiquidity);
+    const STAKER_POKT_LOGO_URL = this.config.get<string>(
+      'LIQUIDITY_STAKER_POKT_LOGO_URL',
+    );
 
     for (let index = 0; index < validCitizenAndStakersPDAs.length; index++) {
       const PDARecord = validCitizenAndStakersPDAs[index];
@@ -273,6 +286,7 @@ export class CoreService {
           action: 'add',
           payload: {
             owner: gatewayID,
+            image: STAKER_POKT_LOGO_URL,
             pda_sub_type: 'Liquidity Provider',
             point: gatewayIDLiquidity,
           },
