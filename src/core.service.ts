@@ -3,7 +3,10 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import lodash from 'lodash';
 import { DNSResolver } from '@common/DNS-lookup/dns.resolver';
 import { WinstonProvider } from '@common/winston/winston.provider';
-import { IssuedStakerPDA } from './pda/interfaces/pda.interface';
+import {
+  IssuedCitizenAndStakerPDA,
+  IssuedStakerPDA,
+} from './pda/interfaces/pda.interface';
 import { PoktScanOutput } from './poktscan/interfaces/pokt-scan.interface';
 import { PDAService } from './pda/pda.service';
 import { PoktScanRetriever } from './poktscan/pokt.retriever';
@@ -235,13 +238,14 @@ export class CoreService {
   }
 
   private async getLiquidityProviderPDAsUpcomingActions(
-    validStakersPDAs: Array<IssuedStakerPDA>,
+    validCitizenAndStakersPDAs: Array<IssuedCitizenAndStakerPDA>,
     GIDsLiquidity: Record<string, number>,
   ) {
-    const updatedPDAsID: Array<string> = [];
+    const havingLPPdaGIDs: Array<string> = [];
+    const uniqueGIDs = Object.keys(GIDsLiquidity);
 
-    for (let index = 0; index < validStakersPDAs.length; index++) {
-      const PDARecord = validStakersPDAs[index];
+    for (let index = 0; index < validCitizenAndStakersPDAs.length; index++) {
+      const PDARecord = validCitizenAndStakersPDAs[index];
       const PDARecordGatewayID = PDARecord.dataAsset.owner.gatewayId;
       const gatewayIDLiquidity = GIDsLiquidity[PDARecordGatewayID];
 
@@ -256,29 +260,34 @@ export class CoreService {
           });
         }
 
-        updatedPDAsID.push(PDARecord.id);
-      } else {
-        if (gatewayIDLiquidity > 0 && !updatedPDAsID.includes(PDARecord.id)) {
-          this.pdaQueue.addJob({
-            action: 'add',
-            payload: {
-              owner: PDARecordGatewayID,
-              pda_sub_type: 'Liquidity Provider',
-              point: gatewayIDLiquidity,
-            },
-          });
-        }
+        havingLPPdaGIDs.push(PDARecordGatewayID);
+      }
+    }
+
+    for (let index = 0; index < uniqueGIDs.length; index++) {
+      const gatewayID = uniqueGIDs[index];
+      const gatewayIDLiquidity = GIDsLiquidity[gatewayID];
+
+      if (gatewayIDLiquidity > 0 && !havingLPPdaGIDs.includes(gatewayID)) {
+        this.pdaQueue.addJob({
+          action: 'add',
+          payload: {
+            owner: gatewayID,
+            pda_sub_type: 'Liquidity Provider',
+            point: gatewayIDLiquidity,
+          },
+        });
       }
     }
   }
 
   private async recalculateLiquidityProviderPDAs(
-    validStakersPDAs: Array<IssuedStakerPDA>,
+    validCitizenAndStakersPDAs: Array<IssuedCitizenAndStakerPDA>,
   ) {
     const GIDsWalletAddresses: Record<string, Array<string>> = {};
 
-    for (let index = 0; index < validStakersPDAs.length; index++) {
-      const PDARecord = validStakersPDAs[index];
+    for (let index = 0; index < validCitizenAndStakersPDAs.length; index++) {
+      const PDARecord = validCitizenAndStakersPDAs[index];
       const gatewayId = PDARecord.dataAsset.owner.gatewayId;
 
       if (!(gatewayId in GIDsWalletAddresses)) {
@@ -291,7 +300,7 @@ export class CoreService {
       await this.wpoktService.getUsersWPoktLiquidity(GIDsWalletAddresses);
 
     await this.getLiquidityProviderPDAsUpcomingActions(
-      validStakersPDAs,
+      validCitizenAndStakersPDAs,
       GIDsLiquidity,
     );
   }
@@ -301,7 +310,11 @@ export class CoreService {
     try {
       this.logger.log('Started task', CoreService.name);
 
-      const validStakersPDAs = await this.pdaService.getIssuedStakerPDAs();
+      const validCitizenAndStakersPDAs =
+        await this.pdaService.getIssuedCitizenAndStakerPDAs();
+      const validStakersPDAs = validCitizenAndStakersPDAs.filter(
+        (pda) => pda.dataAsset.claim.pdaType === 'staker',
+      ) as Array<IssuedStakerPDA>;
 
       // Initialize pda job listener
       this.pdaQueue.reset();
@@ -310,7 +323,7 @@ export class CoreService {
       await this.recalculateValidatorPDAs(validStakersPDAs);
 
       // Staker -> Liquidity provider PDAs
-      await this.recalculateLiquidityProviderPDAs(validStakersPDAs);
+      await this.recalculateLiquidityProviderPDAs(validCitizenAndStakersPDAs);
 
       await this.pdaQueue.wait();
       await this.pdaService.stopJobListener(pdaJobListenerID);

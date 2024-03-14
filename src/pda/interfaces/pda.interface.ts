@@ -55,6 +55,15 @@ export interface IssuedStakerPDA extends IssuedPDA {
   };
 }
 
+export interface IssuedCitizenAndStakerPDA extends IssuedPDA {
+  dataAsset: {
+    claim: PDAClaimBase<'citizen'> | (PDAClaimBase<'staker'> & StakerPDAClaim);
+    owner: {
+      gatewayId: string;
+    };
+  };
+}
+
 export interface IssuedPDAsResponse {
   data: {
     issuedPDAs: Array<IssuedPDA>;
