@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ScheduleModule } from '@nestjs/schedule';
 import { format } from 'winston';
 import LokiTransport from 'winston-loki';
 import { DNSModule } from '@common/DNS-lookup/dns.module';
@@ -47,7 +46,6 @@ import { CoreService } from './core.service';
       },
       inject: [ConfigService],
     }),
-    ScheduleModule.forRoot(),
     PoktModule,
     WPoktModule,
     DNSModule,
