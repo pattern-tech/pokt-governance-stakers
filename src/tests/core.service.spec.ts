@@ -338,220 +338,194 @@ describe('CoreService', () => {
         },
       });
     });
+  });
 
-    // describe('setNonCustodianActions', () => {
-    //   let stakedNodesData: PoktScanOutput;
-    //   let validStakersPDAs: Array<IssuedStakerPDA>;
-    //   let actions: CorePDAsUpcomingActions;
+  describe('setNonCustodianActions', () => {
+    let stakedNodesData: PoktScanOutput;
+    let validStakersPDAs: Array<IssuedStakerPDA>;
 
-    //   beforeEach(() => {
-    //     actions = {
-    //       add: [],
-    //       update: [],
-    //     };
-    //     validStakersPDAs = [
-    //       {
-    //         id: 'pda_id',
-    //         status: 'Valid',
-    //         dataAsset: {
-    //           claim: {
-    //             point: 10,
-    //             pdaType: 'staker',
-    //             pdaSubtype: 'Validator',
-    //             type: 'non-custodian',
-    //             serviceDomain: 'example.com',
-    //             wallets: [
-    //               {
-    //                 address: 'example.com',
-    //                 amount: 1000,
-    //               },
-    //             ],
-    //           },
-    //           owner: {
-    //             gatewayId: 'gatewayID',
-    //           },
-    //         },
-    //       },
-    //     ];
-    //     stakedNodesData = {
-    //       custodian: {},
-    //       non_custodian: {
-    //         'example.com': [
-    //           {
-    //             staked_amount: 1000,
-    //             wallet_address: 'wallet_address',
-    //           },
-    //         ],
-    //       },
-    //     };
-    //   });
-    //   test('Should be defined', () => {
-    //     // Assert
-    //     expect(coreService['setNonCustodianActions']).toBeDefined();
-    //   });
-    //   test('Should update PDA with correct parameters when PDA already exists', async () => {
-    //     // Act
-    //     await coreService['setNonCustodianActions'](
-    //       stakedNodesData,
-    //       validStakersPDAs,
-    //       actions,
-    //     );
-    //     // Assert
-    //     expect(actions.update).toEqual([
-    //       {
-    //         pda_id: 'pda_id',
-    //         point: 1000,
-    //         wallets: [
-    //           {
-    //             address: 'wallet_address',
-    //             amount: 1000,
-    //           },
-    //         ],
-    //       },
-    //     ]);
-    //   });
-    //   test('Should update PDA with point 0 when PDA is Invaid', async () => {
-    //     // Arrange
-    //     stakedNodesData = {
-    //       custodian: {},
-    //       non_custodian: {
-    //         'someOtherExample.com': [
-    //           {
-    //             staked_amount: 1000,
-    //             wallet_address: 'wallet_address',
-    //           },
-    //         ],
-    //       },
-    //     };
-    //     // Act
-    //     await coreService['setNonCustodianActions'](
-    //       stakedNodesData,
-    //       validStakersPDAs,
-    //       actions,
-    //     );
-    //     // Assert
-    //     expect(actions.update).toEqual([
-    //       {
-    //         pda_id: 'pda_id',
-    //         point: 0,
-    //       },
-    //     ]);
-    //   });
-    //   test('Should update PDA with point 0 when address is not equal with "walletAddress"', async () => {
-    //     // Arrange
-    //     validStakersPDAs = [
-    //       {
-    //         id: 'pda_id',
-    //         status: 'Valid',
-    //         dataAsset: {
-    //           claim: {
-    //             point: 10,
-    //             pdaType: 'staker',
-    //             pdaSubtype: 'Validator',
-    //             type: 'non-custodian',
-    //             serviceDomain: 'example.com',
-    //             wallets: [
-    //               {
-    //                 address: 'someOtherWalletAddress',
-    //                 amount: 1000,
-    //               },
-    //             ],
-    //           },
-    //           owner: {
-    //             gatewayId: 'gatewayID',
-    //           },
-    //         },
-    //       },
-    //     ];
-    //     // Act
-    //     await coreService['setNonCustodianActions'](
-    //       stakedNodesData,
-    //       validStakersPDAs,
-    //       actions,
-    //     );
-    //     // Assert
-    //     expect(actions.update).toEqual([
-    //       {
-    //         pda_id: 'pda_id',
-    //         point: 0,
-    //       },
-    //     ]);
-    //   });
-    //   test('Shouls add PDA when PDA is new and Valid', async () => {
-    //     // Arrange
-    //     validStakersPDAs = [];
-    //     // Act
-    //     await coreService['setNonCustodianActions'](
-    //       stakedNodesData,
-    //       validStakersPDAs,
-    //       actions,
-    //     );
-    //     // Assert
-    //     expect(actions.add).toEqual([
-    //       {
-    //         point: 1000,
-    //         node_type: 'non-custodian',
-    //         pda_sub_type: 'Validator',
-    //         owner: 'example.com',
-    //         wallets: [
-    //           {
-    //             address: 'wallet_address',
-    //             amount: 1000,
-    //           },
-    //         ],
-    //       },
-    //     ]);
-    //   });
-    //   test('Should sum staked amount and add all wallets correctly for non-custodian', async () => {
-    //     // Arrange
-    //     stakedNodesData = {
-    //       custodian: {},
-    //       non_custodian: {
-    //         'example.com': [
-    //           {
-    //             staked_amount: 1000,
-    //             wallet_address: 'wallet_address',
-    //           },
-    //           {
-    //             staked_amount: 2000,
-    //             wallet_address: 'wallet_address2',
-    //           },
-    //           {
-    //             staked_amount: 3000,
-    //             wallet_address: 'wallet_address3',
-    //           },
-    //         ],
-    //       },
-    //     };
-    //     // Act
-    //     await coreService['setNonCustodianActions'](
-    //       stakedNodesData,
-    //       validStakersPDAs,
-    //       actions,
-    //     );
-    //     // Assert
-    //     expect(actions.update).toEqual([
-    //       {
-    //         pda_id: 'pda_id',
-    //         point: 6000,
-    //         wallets: [
-    //           {
-    //             address: 'wallet_address',
-    //             amount: 1000,
-    //           },
-    //           {
-    //             address: 'wallet_address2',
-    //             amount: 2000,
-    //           },
-    //           {
-    //             address: 'wallet_address3',
-    //             amount: 3000,
-    //           },
-    //         ],
-    //       },
-    //     ]);
-    //   });
-    // });
+    beforeEach(() => {
+      validStakersPDAs = [
+        {
+          id: 'pda_id',
+          status: 'Valid',
+          dataAsset: {
+            claim: {
+              point: 10,
+              pdaType: 'staker',
+              pdaSubtype: 'Validator',
+              type: 'non-custodian',
+              serviceDomain: 'example.com',
+              wallets: [
+                {
+                  address: 'example.com',
+                  amount: 1000,
+                },
+              ],
+            },
+            owner: {
+              gatewayId: 'gatewayID',
+            },
+          },
+        },
+      ];
+      stakedNodesData = {
+        custodian: {},
+        non_custodian: {
+          'example.com': [
+            {
+              staked_amount: 1000,
+              wallet_address: 'wallet_address',
+            },
+          ],
+        },
+      };
+    });
+    test('Should be defined', () => {
+      // Assert
+      expect(coreService['setNonCustodianActions']).toBeDefined();
+    });
+    test('Should update PDA with correct parameters when PDA already exists', async () => {
+      // Act
+      await coreService['setNonCustodianActions'](
+        stakedNodesData,
+        validStakersPDAs,
+      );
+      // Assert
+      expect(queue.addJob).toHaveBeenCalledWith({
+        action: 'update',
+        payload: {
+          pda_id: 'pda_id',
+          point: 1000,
+          wallets: [{ address: 'example.com', amount: 1000 }],
+        },
+      });
+    });
+    test('Should update PDA with point 0 when PDA is Invaid', async () => {
+      // Arrange
+      stakedNodesData = {
+        custodian: {},
+        non_custodian: {
+          'someOtherExample.com': [
+            {
+              staked_amount: 1000,
+              wallet_address: 'wallet_address',
+            },
+          ],
+        },
+      };
+      // Act
+      await coreService['setNonCustodianActions'](
+        stakedNodesData,
+        validStakersPDAs,
+      );
+      // Assert
+      expect(queue.addJob).toHaveBeenCalledWith({
+        action: 'update',
+        payload: {
+          pda_id: 'pda_id',
+          point: 0,
+          wallets: [],
+        },
+      });
+    });
+    test('Should update PDA with point 0 when address is not equal with "walletAddress"', async () => {
+      // Arrange
+      validStakersPDAs = [
+        {
+          id: 'pda_id',
+          status: 'Valid',
+          dataAsset: {
+            claim: {
+              point: 10,
+              pdaType: 'staker',
+              pdaSubtype: 'Validator',
+              type: 'non-custodian',
+              serviceDomain: 'example.com',
+              wallets: [
+                {
+                  address: 'someOtherWalletAddress',
+                  amount: 1000,
+                },
+              ],
+            },
+            owner: {
+              gatewayId: 'gatewayID',
+            },
+          },
+        },
+      ];
+      // Act
+      await coreService['setNonCustodianActions'](
+        stakedNodesData,
+        validStakersPDAs,
+      );
+      // Assert
+      expect(queue.addJob).toHaveBeenCalledWith({
+        action: 'update',
+        payload: {
+          pda_id: 'pda_id',
+          point: 0,
+          wallets: [],
+        },
+      });
+    });
+    test('Shouls add PDA when PDA is new and Valid', async () => {
+      // Arrange
+      validStakersPDAs = [];
+      // Act
+      await coreService['setNonCustodianActions'](
+        stakedNodesData,
+        validStakersPDAs,
+      );
+      // Assert
+      expect(queue.addJob).toHaveBeenCalledWith({
+        action: 'add',
+        payload: {
+          point: 1000,
+          node_type: 'non-custodian',
+          pda_sub_type: 'Validator',
+          owner: 'example.com',
+          wallets: [{ address: 'example.com', amount: 1000 }],
+        },
+      });
+    });
+    test('Should sum staked amount and add all wallets correctly for non-custodian', async () => {
+      // Arrange
+      stakedNodesData = {
+        custodian: {},
+        non_custodian: {
+          'example.com': [
+            {
+              staked_amount: 1000,
+              wallet_address: 'wallet_address',
+            },
+            {
+              staked_amount: 2000,
+              wallet_address: 'wallet_address2',
+            },
+            {
+              staked_amount: 3000,
+              wallet_address: 'wallet_address3',
+            },
+          ],
+        },
+      };
+      // Act
+      await coreService['setNonCustodianActions'](
+        stakedNodesData,
+        validStakersPDAs,
+      );
+      // Assert
+      expect(queue.addJob).toHaveBeenCalledWith({
+        action: 'update',
+        payload: {
+          pda_id: 'pda_id',
+          point: 6000,
+          wallets: [{ address: 'example.com', amount: 6000 }],
+        },
+      });
+    });
 
     // describe('getPDAsUpcomingActions', () => {
     //   let stakedNodesData: PoktScanOutput;
