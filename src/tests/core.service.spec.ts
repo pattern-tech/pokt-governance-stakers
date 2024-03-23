@@ -1,14 +1,20 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DNSResolver } from '@common/DNS-lookup/dns.resolver';
+import { WinstonProvider } from '@common/winston/winston.provider';
 import { CorePDAsUpcomingActions } from '../core.interface';
+import { IssuedStakerPDA } from '../pda/interfaces/pda.interface';
 import { PoktScanOutput } from '../poktscan/interfaces/pokt-scan.interface';
-import { IssuedStakerPDA } from 'src/pda/interfaces/pda.interface';
 import { CoreService } from '../core.service';
 import { PDAService } from '../pda/pda.service';
 import { PoktScanRetriever } from '../poktscan/pokt.retriever';
+import { WPoktService } from '../wpokt/wpokt.service';
+import { PDAQueue } from '../pda/pda.queue';
 
 // Mock the PDAService
 jest.mock('../pda/pda.service');
+
+// Mock the WPoktService
+jest.mock('../wpokt/wpokt.service');
 
 // Mock the PoktScanRetriever
 jest.mock('../poktscan/pokt.retriever');
@@ -16,20 +22,40 @@ jest.mock('../poktscan/pokt.retriever');
 // Mock the DNSResolver
 jest.mock('@common/DNS-lookup/dns.resolver');
 
+// Mock the WinstonProvider
+jest.mock('@common/winston/winston.provider');
+
+// Mock the the Queue
+jest.mock('@common/utils/queue.util');
+
 // Describe the test suite for the CoreService
 describe('CoreService', () => {
   let coreService: CoreService;
   let dnsResolver: DNSResolver;
   let pdaService: PDAService;
+  let wpoktService: WPoktService;
+  let pdaQueue: PDAQueue;
+  let logger: WinstonProvider;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [CoreService, PDAService, PoktScanRetriever, DNSResolver],
+      providers: [
+        CoreService,
+        PoktScanRetriever,
+        DNSResolver,
+        PDAService,
+        WinstonProvider,
+        WPoktService,
+        PDAQueue,
+      ],
     }).compile();
 
     coreService = module.get<CoreService>(CoreService);
     dnsResolver = module.get<DNSResolver>(DNSResolver);
     pdaService = module.get<PDAService>(PDAService);
+    pdaQueue = module.get<PDAQueue>(PDAQueue);
+    wpoktService = module.get<WPoktService>(WPoktService);
+    logger = module.get<WinstonProvider>(WinstonProvider);
 
     jest.clearAllMocks();
   });
