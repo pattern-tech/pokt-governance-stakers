@@ -88,41 +88,41 @@ describe('DNSResolver', () => {
       expect(DNS.resolveTxt).toHaveBeenCalledWith('example.com');
       expect(DNS.resolveTxt).toHaveBeenCalledTimes(1);
     });
-    test('Should return "false" if identifier !== GATEWAY_ID', async () => {
+    test('Should return "false" if identifier !== POKT_GATEWAY_ID', async () => {
       // Arrange
       jest
         .spyOn(resolver as any, 'getTXTRecords')
-        .mockReturnValue(['GATEWAY_Id=value']);
+        .mockReturnValue(['POKT_GATEWAY_Id=value']);
       // Assert
       expect(await resolver.getGatewayIDFromDomain('example.com')).toEqual(
         false,
       );
     });
-    test('Should handle unusual GATEWAY_IDs', async () => {
+    test('Should handle unusual POKT_GATEWAY_IDs', async () => {
       // Arrange
       jest
         .spyOn(resolver as any, 'getTXTRecords')
-        .mockReturnValue(['GATEWAY_ID=a1/.,d=4~+=t5=s']);
+        .mockReturnValue(['POKT_GATEWAY_ID=a1/.,d=4~+=t5=s']);
       // Assert
       expect(await resolver.getGatewayIDFromDomain('example.com')).toEqual(
         'a1/.,d=4~+=t5=s',
       );
     });
-    test('Should return value when identifier === GATEWAY_ID', async () => {
+    test('Should return value when identifier === POKT_GATEWAY_ID', async () => {
       // Arrange
       jest
         .spyOn(resolver as any, 'getTXTRecords')
-        .mockReturnValue(['GATEWAY_ID=value']);
+        .mockReturnValue(['POKT_GATEWAY_ID=value']);
       // Assert
       expect(await resolver.getGatewayIDFromDomain('example.com')).toEqual(
         'value',
       );
     });
-    test('Should return false when GATEWAY_ID is not defined', async () => {
+    test('Should return false when POKT_GATEWAY_ID is not defined', async () => {
       // Arrange
       jest
         .spyOn(resolver as any, 'getTXTRecords')
-        .mockReturnValue(['GATEWAY_ID=']);
+        .mockReturnValue(['POKT_GATEWAY_ID=']);
       // Assert
       expect(await resolver.getGatewayIDFromDomain('example.com')).toEqual(
         false,
