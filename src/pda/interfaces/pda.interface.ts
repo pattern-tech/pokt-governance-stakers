@@ -35,6 +35,7 @@ interface UserAuthenticationBlock {
 export interface IssuedPDA {
   id: string;
   status: 'Valid' | 'Suspended' | 'Revoked' | 'Expired';
+  image?: string;
   dataAsset: {
     claim:
       | PDAClaimBase<'citizen'>
@@ -49,6 +50,15 @@ export interface IssuedPDA {
 export interface IssuedStakerPDA extends IssuedPDA {
   dataAsset: {
     claim: PDAClaimBase<'staker'> & StakerPDAClaim;
+    owner: {
+      gatewayId: string;
+    };
+  };
+}
+
+export interface IssuedCitizenAndStakerPDA extends IssuedPDA {
+  dataAsset: {
+    claim: PDAClaimBase<'citizen'> | (PDAClaimBase<'staker'> & StakerPDAClaim);
     owner: {
       gatewayId: string;
     };
@@ -81,6 +91,7 @@ export interface IssueNewStakerPDAVariables {
   org_gateway_id: string;
   data_model_id: string;
   owner: string;
+  image: string;
   owner_type: 'GATEWAY_ID' | 'POKT';
   claim: PDAClaimBase<'staker'> & StakerPDAClaim;
 }

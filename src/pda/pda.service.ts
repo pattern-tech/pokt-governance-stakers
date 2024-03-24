@@ -8,11 +8,11 @@ import { Pagination } from './interfaces/common.interface';
 import {
   IssueNewStakerPDAResponse,
   IssueNewStakerPDAVariables,
+  IssuedCitizenAndStakerPDA,
   IssuedPDACountResponse,
   IssuedPDACountVariables,
   IssuedPDAsResponse,
   IssuedPDAsVariables,
-  IssuedStakerPDA,
   UpdateStakerPDAResponse,
   UpdateStakerPDAVariables,
   UserAuthenticationsResponse,
@@ -121,7 +121,7 @@ export class PDAService {
     return pages;
   }
 
-  async getIssuedStakerPDAs() {
+  async getIssuedCitizenAndStakerPDAs() {
     const ORG_GATEWAY_ID = this.config.get<string>('POKT_ORG_GATEWAY_ID');
 
     const pdaCountQuery = this.getIssuedPDACountGQL();
@@ -152,7 +152,7 @@ export class PDAService {
     }
 
     const responses: Array<IssuedPDAsResponse> = await Promise.all(promises);
-    const results: Array<IssuedStakerPDA> = [];
+    const results: Array<IssuedCitizenAndStakerPDA> = [];
 
     for (let res_idx = 0; res_idx < responses.length; res_idx++) {
       const PDAs = responses[res_idx].data.issuedPDAs;
@@ -162,9 +162,10 @@ export class PDAService {
 
         if (
           PDA.status === 'Valid' &&
-          PDA.dataAsset.claim.pdaType === 'staker'
+          (PDA.dataAsset.claim.pdaType === 'staker' ||
+            PDA.dataAsset.claim.pdaType === 'citizen')
         ) {
-          results.push(PDA as IssuedStakerPDA);
+          results.push(PDA as IssuedCitizenAndStakerPDA);
         }
       }
     }
@@ -179,6 +180,7 @@ export class PDAService {
       $data_model_id: String!
       $owner: String!
       $owner_type: UserIdentifierType!
+      $image: String!
       $claim: JSON!
     ) {
       createPDA(
@@ -187,6 +189,7 @@ export class PDAService {
               title: "Pocket Network Staker"
               description: "Servicer or Validator Path"
               owner: { type: $owner_type, value: $owner }
+              image: $image
               organization: { type: GATEWAY_ID, value: $org_gateway_id }
               claim: $claim
           }
@@ -202,6 +205,7 @@ export class PDAService {
     const ORG_GATEWAY_ID = this.config.get<string>('POKT_ORG_GATEWAY_ID');
 
     const variables: IssueNewStakerPDAVariables = {
+      image: addAction.image,
       data_model_id: DATA_MODEL_ID,
       org_gateway_id: ORG_GATEWAY_ID,
       owner: addAction.owner,

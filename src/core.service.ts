@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import lodash from 'lodash';
 import { DNSResolver } from '@common/DNS-lookup/dns.resolver';
 import { WinstonProvider } from '@common/winston/winston.provider';
-import { IssuedStakerPDA } from './pda/interfaces/pda.interface';
+import {
+  IssuedCitizenAndStakerPDA,
+  IssuedStakerPDA,
+} from './pda/interfaces/pda.interface';
 import { PoktScanOutput } from './poktscan/interfaces/pokt-scan.interface';
 import { PDAService } from './pda/pda.service';
 import { PoktScanRetriever } from './poktscan/pokt.retriever';
@@ -18,6 +22,7 @@ export class CoreService {
     private readonly pdaService: PDAService,
     private readonly wpoktService: WPoktService,
     private readonly logger: WinstonProvider,
+    private readonly config: ConfigService,
     private readonly pdaQueue: PDAQueue,
   ) {}
 
@@ -26,6 +31,9 @@ export class CoreService {
     validStakersPDAs: Array<IssuedStakerPDA>,
   ) {
     this.logger.log('Started set custodian actions', CoreService.name);
+    const STAKER_POKT_LOGO_URL = this.config.get<string>(
+      'SUPPLY_STAKER_POKT_LOGO_URL',
+    );
 
     for (const domain in stakedNodesData.custodian) {
       if (
@@ -64,6 +72,7 @@ export class CoreService {
               action: 'add',
               payload: {
                 point: sumOfStakedTokens,
+                image: STAKER_POKT_LOGO_URL,
                 node_type: 'custodian',
                 pda_sub_type: 'Validator',
                 owner: resolvedGatewayID,
@@ -120,6 +129,9 @@ export class CoreService {
     validStakersPDAs: Array<IssuedStakerPDA>,
   ) {
     this.logger.log('Started set nonCustodian actions', CoreService.name);
+    const STAKER_POKT_LOGO_URL = this.config.get<string>(
+      'SUPPLY_STAKER_POKT_LOGO_URL',
+    );
 
     for (const walletAddress in stakedNodesData.non_custodian) {
       if (
@@ -160,6 +172,7 @@ export class CoreService {
             action: 'add',
             payload: {
               point: sumOfStakedTokens,
+              image: STAKER_POKT_LOGO_URL,
               node_type: 'non-custodian',
               pda_sub_type: 'Validator',
               owner: walletAddress,
@@ -235,13 +248,17 @@ export class CoreService {
   }
 
   private async getLiquidityProviderPDAsUpcomingActions(
-    validStakersPDAs: Array<IssuedStakerPDA>,
+    validCitizenAndStakersPDAs: Array<IssuedCitizenAndStakerPDA>,
     GIDsLiquidity: Record<string, number>,
   ) {
-    const updatedPDAsID: Array<string> = [];
+    const havingLPPdaGIDs: Array<string> = [];
+    const uniqueGIDs = Object.keys(GIDsLiquidity);
+    const STAKER_POKT_LOGO_URL = this.config.get<string>(
+      'LIQUIDITY_STAKER_POKT_LOGO_URL',
+    );
 
-    for (let index = 0; index < validStakersPDAs.length; index++) {
-      const PDARecord = validStakersPDAs[index];
+    for (let index = 0; index < validCitizenAndStakersPDAs.length; index++) {
+      const PDARecord = validCitizenAndStakersPDAs[index];
       const PDARecordGatewayID = PDARecord.dataAsset.owner.gatewayId;
       const gatewayIDLiquidity = GIDsLiquidity[PDARecordGatewayID];
 
@@ -256,29 +273,35 @@ export class CoreService {
           });
         }
 
-        updatedPDAsID.push(PDARecord.id);
-      } else {
-        if (gatewayIDLiquidity > 0 && !updatedPDAsID.includes(PDARecord.id)) {
-          this.pdaQueue.addJob({
-            action: 'add',
-            payload: {
-              owner: PDARecordGatewayID,
-              pda_sub_type: 'Liquidity Provider',
-              point: gatewayIDLiquidity,
-            },
-          });
-        }
+        havingLPPdaGIDs.push(PDARecordGatewayID);
+      }
+    }
+
+    for (let index = 0; index < uniqueGIDs.length; index++) {
+      const gatewayID = uniqueGIDs[index];
+      const gatewayIDLiquidity = GIDsLiquidity[gatewayID];
+
+      if (gatewayIDLiquidity > 0 && !havingLPPdaGIDs.includes(gatewayID)) {
+        this.pdaQueue.addJob({
+          action: 'add',
+          payload: {
+            owner: gatewayID,
+            image: STAKER_POKT_LOGO_URL,
+            pda_sub_type: 'Liquidity Provider',
+            point: gatewayIDLiquidity,
+          },
+        });
       }
     }
   }
 
   private async recalculateLiquidityProviderPDAs(
-    validStakersPDAs: Array<IssuedStakerPDA>,
+    validCitizenAndStakersPDAs: Array<IssuedCitizenAndStakerPDA>,
   ) {
     const GIDsWalletAddresses: Record<string, Array<string>> = {};
 
-    for (let index = 0; index < validStakersPDAs.length; index++) {
-      const PDARecord = validStakersPDAs[index];
+    for (let index = 0; index < validCitizenAndStakersPDAs.length; index++) {
+      const PDARecord = validCitizenAndStakersPDAs[index];
       const gatewayId = PDARecord.dataAsset.owner.gatewayId;
 
       if (!(gatewayId in GIDsWalletAddresses)) {
@@ -291,7 +314,7 @@ export class CoreService {
       await this.wpoktService.getUsersWPoktLiquidity(GIDsWalletAddresses);
 
     await this.getLiquidityProviderPDAsUpcomingActions(
-      validStakersPDAs,
+      validCitizenAndStakersPDAs,
       GIDsLiquidity,
     );
   }
@@ -301,7 +324,11 @@ export class CoreService {
     try {
       this.logger.log('Started task', CoreService.name);
 
-      const validStakersPDAs = await this.pdaService.getIssuedStakerPDAs();
+      const validCitizenAndStakersPDAs =
+        await this.pdaService.getIssuedCitizenAndStakerPDAs();
+      const validStakersPDAs = validCitizenAndStakersPDAs.filter(
+        (pda) => pda.dataAsset.claim.pdaType === 'staker',
+      ) as Array<IssuedStakerPDA>;
 
       // Initialize pda job listener
       this.pdaQueue.reset();
@@ -310,7 +337,7 @@ export class CoreService {
       await this.recalculateValidatorPDAs(validStakersPDAs);
 
       // Staker -> Liquidity provider PDAs
-      await this.recalculateLiquidityProviderPDAs(validStakersPDAs);
+      await this.recalculateLiquidityProviderPDAs(validCitizenAndStakersPDAs);
 
       await this.pdaQueue.wait();
       await this.pdaService.stopJobListener(pdaJobListenerID);
