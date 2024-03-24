@@ -36,6 +36,7 @@ describe('CoreService', () => {
   let wpoktService: WPoktService;
   let queue: PDAQueue;
   let logger: WinstonProvider;
+  let pokt: PoktScanRetriever;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -47,6 +48,7 @@ describe('CoreService', () => {
         WinstonProvider,
         WPoktService,
         PDAQueue,
+        PoktScanRetriever,
       ],
     }).compile();
 
@@ -56,6 +58,7 @@ describe('CoreService', () => {
     queue = module.get<PDAQueue>(PDAQueue);
     wpoktService = module.get<WPoktService>(WPoktService);
     logger = module.get<WinstonProvider>(WinstonProvider);
+    pokt = module.get<PoktScanRetriever>(PoktScanRetriever);
 
     jest.clearAllMocks();
   });
@@ -385,6 +388,25 @@ describe('CoreService', () => {
       // Assert
       expect(coreService['setNonCustodianActions']).toBeDefined();
     });
+    test('Should call log method from logger with correct parameters', async () => {
+      await coreService['setNonCustodianActions'](
+        stakedNodesData,
+        validStakersPDAs,
+      );
+      expect(logger.log).toHaveBeenCalledWith(
+        'Started set nonCustodian actions',
+        CoreService.name,
+      );
+      expect(logger.log).toHaveBeenCalledWith(
+        'Started check PDAs nonCustodian',
+        CoreService.name,
+      );
+      expect(logger.log).toHaveBeenCalledWith(
+        'Completed set nonCustodian actions',
+        CoreService.name,
+      );
+      expect(logger.log).toHaveBeenCalledTimes(3);
+    });
     test('Should update PDA with correct parameters when PDA already exists', async () => {
       // Act
       await coreService['setNonCustodianActions'](
@@ -526,125 +548,178 @@ describe('CoreService', () => {
         },
       });
     });
-
-    // describe('getPDAsUpcomingActions', () => {
-    //   let stakedNodesData: PoktScanOutput;
-    //   let validStakersPDAs: Array<IssuedStakerPDA>;
-    //   let actions: CorePDAsUpcomingActions;
-
-    //   beforeEach(() => {
-    //     actions = {
-    //       add: [],
-    //       update: [],
-    //     };
-    //     validStakersPDAs = [
-    //       {
-    //         id: 'pda_id',
-    //         status: 'Valid',
-    //         dataAsset: {
-    //           claim: {
-    //             point: 10,
-    //             pdaType: 'staker',
-    //             pdaSubtype: 'Validator',
-    //             type: 'custodian',
-    //             serviceDomain: 'example.com',
-    //             wallets: [
-    //               {
-    //                 address: 'example.com',
-    //                 amount: 1000,
-    //               },
-    //             ],
-    //           },
-    //           owner: {
-    //             gatewayId: 'gatewayID',
-    //           },
-    //         },
-    //       },
-    //     ];
-    //     stakedNodesData = {
-    //       custodian: {
-    //         'example.comGATEWAY_ID=gatewayID': [
-    //           {
-    //             domain: 'example.comGATEWAY_ID=gatewayID',
-    //             staked_amount: 1000,
-    //             wallet_address: 'wallet_address',
-    //           },
-    //         ],
-    //       },
-    //       non_custodian: {
-    //         'example.com': [
-    //           {
-    //             staked_amount: 1000,
-    //             wallet_address: 'wallet_address',
-    //           },
-    //         ],
-    //       },
-    //     };
-    //     jest
-    //       .spyOn(coreService as any, 'setCustodianActions')
-    //       .mockResolvedValue('');
-    //     jest
-    //       .spyOn(coreService as any, 'setNonCustodianActions')
-    //       .mockResolvedValue('');
-    //   });
-    //   test('Should be defined', () => {
-    //     // Assert
-    //     expect(coreService['getPDAsUpcomingActions']).toBeDefined();
-    //   });
-    //   test('Should call setCustodianActions with correct parameters', async () => {
-    //     // Act
-    //     await coreService['getPDAsUpcomingActions'](
-    //       stakedNodesData,
-    //       validStakersPDAs,
-    //     );
-    //     // Assert
-    //     expect(coreService['setCustodianActions']).toHaveBeenCalledWith(
-    //       stakedNodesData,
-    //       validStakersPDAs,
-    //       actions,
-    //     );
-    //   });
-    //   test('Should call setNonCustodianActions with correct parameters', async () => {
-    //     // Act
-    //     await coreService['getPDAsUpcomingActions'](
-    //       stakedNodesData,
-    //       validStakersPDAs,
-    //     );
-    //     // Assert
-    //     expect(coreService['setNonCustodianActions']).toHaveBeenCalledWith(
-    //       stakedNodesData,
-    //       validStakersPDAs,
-    //       actions,
-    //     );
-    //   });
-    //   test('Should return actions', async () => {
-    //     // Assert
-    //     expect(
-    //       await coreService['getPDAsUpcomingActions'](
-    //         stakedNodesData,
-    //         validStakersPDAs,
-    //       ),
-    //     ).toEqual(actions);
-    //   });
-    // });
-    // describe('handler', () => {
-    //   beforeEach(() => {
-    //     jest.spyOn(coreService as any, 'getPDAsUpcomingActions').mockReturnValue({
-    //       add: [],
-    //       update: [],
-    //     });
-    //   });
-    //   test('Should call issueNewStakerPDA with correct parameters', async () => {
-    //     // Act
-    //     await coreService.handler();
-    //     // Assert
-    //     expect(pdaService.issueNewStakerPDA).toHaveBeenCalledWith([]);
-    //   });
-    //   test('Should call updateIssuedStakerPDAs with correct parameters', async () => {
-    //     // Act
-    //     await coreService.handler();
-    //     // Assert
-    //     expect(pdaService.updateIssuedStakerPDAs).toHaveBeenCalledWith([]);
-    //   });
   });
+  describe('getValidatorPDAsUpcomingActions', () => {
+    const stakedNodesData: PoktScanOutput = {
+      custodian: {},
+      non_custodian: {},
+    };
+    const validStakersPDAs: Array<IssuedStakerPDA> = [];
+    test('Should call "setCustodianActions" and "setNonCustodianActions" methods with the correct parameters', async () => {
+      // Arrange
+      jest
+        .spyOn(coreService as any, 'setCustodianActions')
+        .mockResolvedValue('');
+      jest
+        .spyOn(coreService as any, 'setNonCustodianActions')
+        .mockResolvedValue('');
+      // Act
+      await coreService['getValidatorPDAsUpcomingActions'](
+        stakedNodesData,
+        validStakersPDAs,
+      );
+      expect(coreService['setCustodianActions']).toHaveBeenCalledWith(
+        stakedNodesData,
+        validStakersPDAs,
+      );
+      expect(coreService['setNonCustodianActions']).toHaveBeenCalledWith(
+        stakedNodesData,
+        validStakersPDAs,
+      );
+    });
+  });
+
+  describe('recalculateValidatorPDAs', () => {
+    const validStakersPDAs: Array<IssuedStakerPDA> = [];
+    test('Should call retrieve method from poktScanRetriever', async () => {
+      // Act
+      await coreService['recalculateValidatorPDAs'](validStakersPDAs);
+      expect(pokt.retrieve).toHaveBeenCalledTimes(1);
+    });
+    test('Should call "getValidatorPDAsUpcomingActions" method with correct parameters', async () => {
+      // Arrange
+      jest
+        .spyOn(coreService as any, 'getValidatorPDAsUpcomingActions')
+        .mockResolvedValue('');
+      // Act
+      await coreService['recalculateValidatorPDAs'](validStakersPDAs);
+      // Assert
+      expect(
+        coreService['getValidatorPDAsUpcomingActions'],
+      ).toHaveBeenCalledWith(
+        { custodian: {}, non_custodian: {} },
+        validStakersPDAs,
+      );
+    });
+  });
+
+  // describe('getPDAsUpcomingActions', () => {
+  //   let stakedNodesData: PoktScanOutput;
+  //   let validStakersPDAs: Array<IssuedStakerPDA>;
+  //   let actions: CorePDAsUpcomingActions;
+
+  //   beforeEach(() => {
+  //     actions = {
+  //       add: [],
+  //       update: [],
+  //     };
+  //     validStakersPDAs = [
+  //       {
+  //         id: 'pda_id',
+  //         status: 'Valid',
+  //         dataAsset: {
+  //           claim: {
+  //             point: 10,
+  //             pdaType: 'staker',
+  //             pdaSubtype: 'Validator',
+  //             type: 'custodian',
+  //             serviceDomain: 'example.com',
+  //             wallets: [
+  //               {
+  //                 address: 'example.com',
+  //                 amount: 1000,
+  //               },
+  //             ],
+  //           },
+  //           owner: {
+  //             gatewayId: 'gatewayID',
+  //           },
+  //         },
+  //       },
+  //     ];
+  //     stakedNodesData = {
+  //       custodian: {
+  //         'example.comGATEWAY_ID=gatewayID': [
+  //           {
+  //             domain: 'example.comGATEWAY_ID=gatewayID',
+  //             staked_amount: 1000,
+  //             wallet_address: 'wallet_address',
+  //           },
+  //         ],
+  //       },
+  //       non_custodian: {
+  //         'example.com': [
+  //           {
+  //             staked_amount: 1000,
+  //             wallet_address: 'wallet_address',
+  //           },
+  //         ],
+  //       },
+  //     };
+  //     jest
+  //       .spyOn(coreService as any, 'setCustodianActions')
+  //       .mockResolvedValue('');
+  //     jest
+  //       .spyOn(coreService as any, 'setNonCustodianActions')
+  //       .mockResolvedValue('');
+  //   });
+  //   test('Should be defined', () => {
+  //     // Assert
+  //     expect(coreService['getPDAsUpcomingActions']).toBeDefined();
+  //   });
+  //   test('Should call setCustodianActions with correct parameters', async () => {
+  //     // Act
+  //     await coreService['getPDAsUpcomingActions'](
+  //       stakedNodesData,
+  //       validStakersPDAs,
+  //     );
+  //     // Assert
+  //     expect(coreService['setCustodianActions']).toHaveBeenCalledWith(
+  //       stakedNodesData,
+  //       validStakersPDAs,
+  //       actions,
+  //     );
+  //   });
+  //   test('Should call setNonCustodianActions with correct parameters', async () => {
+  //     // Act
+  //     await coreService['getPDAsUpcomingActions'](
+  //       stakedNodesData,
+  //       validStakersPDAs,
+  //     );
+  //     // Assert
+  //     expect(coreService['setNonCustodianActions']).toHaveBeenCalledWith(
+  //       stakedNodesData,
+  //       validStakersPDAs,
+  //       actions,
+  //     );
+  //   });
+  //   test('Should return actions', async () => {
+  //     // Assert
+  //     expect(
+  //       await coreService['getPDAsUpcomingActions'](
+  //         stakedNodesData,
+  //         validStakersPDAs,
+  //       ),
+  //     ).toEqual(actions);
+  //   });
+  // });
+  // describe('handler', () => {
+  //   beforeEach(() => {
+  //     jest.spyOn(coreService as any, 'getPDAsUpcomingActions').mockReturnValue({
+  //       add: [],
+  //       update: [],
+  //     });
+  //   });
+  //   test('Should call issueNewStakerPDA with correct parameters', async () => {
+  //     // Act
+  //     await coreService.handler();
+  //     // Assert
+  //     expect(pdaService.issueNewStakerPDA).toHaveBeenCalledWith([]);
+  //   });
+  //   test('Should call updateIssuedStakerPDAs with correct parameters', async () => {
+  //     // Act
+  //     await coreService.handler();
+  //     // Assert
+  //     expect(pdaService.updateIssuedStakerPDAs).toHaveBeenCalledWith([]);
+  //   });
 });
