@@ -3,4 +3,5 @@ export const Queue = jest.fn().mockReturnValue({
   popJob: jest.fn(),
   popJobs: jest.fn(),
   reset: jest.fn(),
+  wait: jest.fn(),
 });

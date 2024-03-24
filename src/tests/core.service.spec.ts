@@ -865,4 +865,159 @@ describe('CoreService', () => {
       });
     });
   });
+  describe('handler', () => {
+    test('Should handle the condition when Error occurs', async () => {
+      try {
+        await coreService.handler();
+        // to check the case if Error occurs
+        throw new Error('Test failed');
+      } catch (err) {
+        expect(logger.error).toHaveBeenCalled();
+      }
+    });
+    test('Should call getIssuedCitizenAndStakerPDAs method', async () => {
+      await coreService.handler();
+      expect(pdaService.getIssuedCitizenAndStakerPDAs).toHaveBeenCalled();
+    });
+
+    test('Should call recalculateValidatorPDAs method with correct parameter', async () => {
+      jest
+        .spyOn(pdaService, 'getIssuedCitizenAndStakerPDAs')
+        .mockResolvedValue([
+          {
+            id: 'pda_id',
+            status: 'Valid',
+            dataAsset: {
+              claim: {
+                point: 10,
+                pdaType: 'staker',
+                pdaSubtype: 'Validator',
+                type: 'custodian',
+                serviceDomain: 'example.comPOKT_GATEWAY_ID=gatewayID',
+                wallets: [
+                  {
+                    address: 'address',
+                    amount: 1,
+                  },
+                ],
+              },
+              owner: {
+                gatewayId: 'gatewayID',
+              },
+            },
+          },
+          {
+            id: 'pda_id2',
+            status: 'Valid',
+            dataAsset: {
+              claim: {
+                point: 1,
+                pdaType: 'citizen',
+                pdaSubtype: 'POKT DAO',
+              },
+              owner: {
+                gatewayId: 'gatewayID2',
+              },
+            },
+          },
+        ]);
+      jest
+        .spyOn(coreService as any, 'recalculateValidatorPDAs')
+        .mockResolvedValue('');
+      await coreService.handler();
+      expect(coreService['recalculateValidatorPDAs']).toHaveBeenCalledWith([
+        {
+          id: 'pda_id',
+          status: 'Valid',
+          dataAsset: {
+            claim: {
+              point: 10,
+              pdaType: 'staker',
+              pdaSubtype: 'Validator',
+              type: 'custodian',
+              serviceDomain: 'example.comPOKT_GATEWAY_ID=gatewayID',
+              wallets: [
+                {
+                  address: 'address',
+                  amount: 1,
+                },
+              ],
+            },
+            owner: {
+              gatewayId: 'gatewayID',
+            },
+          },
+        },
+      ]);
+    });
+    test('Should call recalculateLiquidityProviderPDAs method with correct parameter', async () => {
+      const mockPDAs: any = [
+        {
+          id: 'pda_id',
+          status: 'Valid',
+          dataAsset: {
+            claim: {
+              point: 10,
+              pdaType: 'staker',
+              pdaSubtype: 'Validator',
+              type: 'custodian',
+              serviceDomain: 'example.comPOKT_GATEWAY_ID=gatewayID',
+              wallets: [
+                {
+                  address: 'address',
+                  amount: 1,
+                },
+              ],
+            },
+            owner: {
+              gatewayId: 'gatewayID',
+            },
+          },
+        },
+        {
+          id: 'pda_id2',
+          status: 'Valid',
+          dataAsset: {
+            claim: {
+              point: 1,
+              pdaType: 'citizen',
+              pdaSubtype: 'POKT DAO',
+            },
+            owner: {
+              gatewayId: 'gatewayID2',
+            },
+          },
+        },
+      ];
+      jest
+        .spyOn(pdaService, 'getIssuedCitizenAndStakerPDAs')
+        .mockResolvedValue(mockPDAs);
+      jest
+        .spyOn(coreService as any, 'recalculateLiquidityProviderPDAs')
+        .mockResolvedValue('');
+      await coreService.handler();
+      expect(
+        coreService['recalculateLiquidityProviderPDAs'],
+      ).toHaveBeenCalledWith(mockPDAs);
+    });
+    test('Should call log method from logger with correct parameter', async () => {
+      await coreService.handler();
+      expect(logger.log).toHaveBeenCalledWith('Started task', CoreService.name);
+      expect(logger.log).toHaveBeenCalledWith(
+        'Completed task',
+        CoreService.name,
+      );
+    });
+    test('Should call jobListener and stopJobListener methods with correct pat=rameter', async () => {
+      jest.spyOn(pdaService, 'jobListener').mockResolvedValue(1 as any);
+      await coreService.handler();
+      expect(pdaService.jobListener).toHaveBeenCalledWith(2000, 10);
+      expect(pdaService.stopJobListener).toHaveBeenCalledWith(1);
+    });
+    test('Should call reset and wait wethods from pdaQueue', async () => {
+      await coreService.handler();
+      expect(queue.reset).toHaveBeenCalled();
+      expect(queue.wait).toHaveBeenCalled();
+    });
+  });
 });

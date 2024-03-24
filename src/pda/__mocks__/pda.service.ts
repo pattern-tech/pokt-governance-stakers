@@ -8,7 +8,10 @@ export const PDAService = jest.fn().mockReturnValue({
   pagination: jest.fn(),
   issueNewStakerPDA: jest.fn(),
   getIssuedStakerPDAs: jest.fn(),
+  getIssuedCitizenAndStakerPDAs: jest.fn(),
   getUpdateStakerPdaGQL: jest.fn(),
   updateIssuedStakerPDAs: jest.fn(),
   getUserEVMWallets: jest.fn(),
+  jobListener: jest.fn(),
+  stopJobListener: jest.fn(),
 });
