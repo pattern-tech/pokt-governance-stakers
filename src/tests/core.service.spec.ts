@@ -1,7 +1,7 @@
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { DNSResolver } from '@common/DNS-lookup/dns.resolver';
 import { WinstonProvider } from '@common/winston/winston.provider';
-import { CorePDAsUpcomingActions } from '../core.interface';
 import { IssuedStakerPDA } from '../pda/interfaces/pda.interface';
 import { PoktScanOutput } from '../poktscan/interfaces/pokt-scan.interface';
 import { CoreService } from '../core.service';
@@ -37,6 +37,7 @@ describe('CoreService', () => {
   let queue: PDAQueue;
   let logger: WinstonProvider;
   let pokt: PoktScanRetriever;
+  let config: ConfigService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -50,6 +51,7 @@ describe('CoreService', () => {
         PDAQueue,
         PoktScanRetriever,
       ],
+      imports: [ConfigModule],
     }).compile();
 
     coreService = module.get<CoreService>(CoreService);
@@ -59,6 +61,7 @@ describe('CoreService', () => {
     wpoktService = module.get<WPoktService>(WPoktService);
     logger = module.get<WinstonProvider>(WinstonProvider);
     pokt = module.get<PoktScanRetriever>(PoktScanRetriever);
+    config = module.get<ConfigService>(ConfigService);
 
     jest.clearAllMocks();
   });
@@ -109,6 +112,8 @@ describe('CoreService', () => {
         },
         non_custodian: {},
       };
+
+      jest.spyOn(config, 'get').mockReturnValue('');
     });
 
     test('Should be defined', () => {
@@ -133,6 +138,13 @@ describe('CoreService', () => {
         CoreService.name,
       );
       expect(logger.log).toHaveBeenCalledTimes(3);
+    });
+    test('Should call get method from config with the correct parameter', async () => {
+      await coreService['setCustodianActions'](
+        stakedNodesData,
+        validStakersPDAs,
+      );
+      expect(config.get).toHaveBeenCalledWith('SUPPLY_STAKER_POKT_LOGO_URL');
     });
     test('Should update PDA with point 0 when PDA suits with no service domain', async () => {
       // Arrange
@@ -269,6 +281,7 @@ describe('CoreService', () => {
       expect(queue.addJob).toHaveBeenCalledWith({
         action: 'add',
         payload: {
+          image: '',
           point: 1000,
           node_type: 'custodian',
           pda_sub_type: 'Validator',
@@ -383,6 +396,8 @@ describe('CoreService', () => {
           ],
         },
       };
+
+      jest.spyOn(config, 'get').mockReturnValue('');
     });
     test('Should be defined', () => {
       // Assert
@@ -406,6 +421,13 @@ describe('CoreService', () => {
         CoreService.name,
       );
       expect(logger.log).toHaveBeenCalledTimes(3);
+    });
+    test('Should call get method from config with the correct parameter', async () => {
+      await coreService['setNonCustodianActions'](
+        stakedNodesData,
+        validStakersPDAs,
+      );
+      expect(config.get).toHaveBeenCalledWith('SUPPLY_STAKER_POKT_LOGO_URL');
     });
     test('Should update PDA with correct parameters when PDA already exists', async () => {
       // Act
@@ -504,6 +526,7 @@ describe('CoreService', () => {
       expect(queue.addJob).toHaveBeenCalledWith({
         action: 'add',
         payload: {
+          image: '',
           point: 1000,
           node_type: 'non-custodian',
           pda_sub_type: 'Validator',
@@ -602,124 +625,137 @@ describe('CoreService', () => {
       );
     });
   });
-
-  // describe('getPDAsUpcomingActions', () => {
-  //   let stakedNodesData: PoktScanOutput;
-  //   let validStakersPDAs: Array<IssuedStakerPDA>;
-  //   let actions: CorePDAsUpcomingActions;
-
-  //   beforeEach(() => {
-  //     actions = {
-  //       add: [],
-  //       update: [],
-  //     };
-  //     validStakersPDAs = [
-  //       {
-  //         id: 'pda_id',
-  //         status: 'Valid',
-  //         dataAsset: {
-  //           claim: {
-  //             point: 10,
-  //             pdaType: 'staker',
-  //             pdaSubtype: 'Validator',
-  //             type: 'custodian',
-  //             serviceDomain: 'example.com',
-  //             wallets: [
-  //               {
-  //                 address: 'example.com',
-  //                 amount: 1000,
-  //               },
-  //             ],
-  //           },
-  //           owner: {
-  //             gatewayId: 'gatewayID',
-  //           },
-  //         },
-  //       },
-  //     ];
-  //     stakedNodesData = {
-  //       custodian: {
-  //         'example.comGATEWAY_ID=gatewayID': [
-  //           {
-  //             domain: 'example.comGATEWAY_ID=gatewayID',
-  //             staked_amount: 1000,
-  //             wallet_address: 'wallet_address',
-  //           },
-  //         ],
-  //       },
-  //       non_custodian: {
-  //         'example.com': [
-  //           {
-  //             staked_amount: 1000,
-  //             wallet_address: 'wallet_address',
-  //           },
-  //         ],
-  //       },
-  //     };
-  //     jest
-  //       .spyOn(coreService as any, 'setCustodianActions')
-  //       .mockResolvedValue('');
-  //     jest
-  //       .spyOn(coreService as any, 'setNonCustodianActions')
-  //       .mockResolvedValue('');
-  //   });
-  //   test('Should be defined', () => {
-  //     // Assert
-  //     expect(coreService['getPDAsUpcomingActions']).toBeDefined();
-  //   });
-  //   test('Should call setCustodianActions with correct parameters', async () => {
-  //     // Act
-  //     await coreService['getPDAsUpcomingActions'](
-  //       stakedNodesData,
-  //       validStakersPDAs,
-  //     );
-  //     // Assert
-  //     expect(coreService['setCustodianActions']).toHaveBeenCalledWith(
-  //       stakedNodesData,
-  //       validStakersPDAs,
-  //       actions,
-  //     );
-  //   });
-  //   test('Should call setNonCustodianActions with correct parameters', async () => {
-  //     // Act
-  //     await coreService['getPDAsUpcomingActions'](
-  //       stakedNodesData,
-  //       validStakersPDAs,
-  //     );
-  //     // Assert
-  //     expect(coreService['setNonCustodianActions']).toHaveBeenCalledWith(
-  //       stakedNodesData,
-  //       validStakersPDAs,
-  //       actions,
-  //     );
-  //   });
-  //   test('Should return actions', async () => {
-  //     // Assert
-  //     expect(
-  //       await coreService['getPDAsUpcomingActions'](
-  //         stakedNodesData,
-  //         validStakersPDAs,
-  //       ),
-  //     ).toEqual(actions);
-  //   });
-  // });
-  // describe('handler', () => {
-  //   beforeEach(() => {
-  //     jest.spyOn(coreService as any, 'getPDAsUpcomingActions').mockReturnValue({
-  //       add: [],
-  //       update: [],
-  //     });
-  //   });
-  //   test('Should call issueNewStakerPDA with correct parameters', async () => {
-  //     // Act
-  //     await coreService.handler();
-  //     // Assert
-  //     expect(pdaService.issueNewStakerPDA).toHaveBeenCalledWith([]);
-  //   });
-  //   test('Should call updateIssuedStakerPDAs with correct parameters', async () => {
-  //     // Act
-  //     await coreService.handler();
-  //     // Assert
-  //     expect(pdaService.updateIssuedStakerPDAs).toHaveBeenCalledWith([]);
-  //   });
+  describe('getLiquidityProviderPDAsUpcomingActions', () => {
+    let validStakersPDAs: Array<IssuedStakerPDA>;
+    let GIDsLiquidity: Record<string, number>;
+    beforeEach(() => {
+      validStakersPDAs = [
+        {
+          id: 'pda_id',
+          status: 'Valid',
+          dataAsset: {
+            claim: {
+              point: 10,
+              pdaType: 'staker',
+              pdaSubtype: 'Liquidity Provider',
+              type: 'custodian',
+              serviceDomain: 'example.comPOKT_GATEWAY_ID=gatewayID',
+              wallets: [
+                {
+                  address: 'address',
+                  amount: 1,
+                },
+              ],
+            },
+            owner: {
+              gatewayId: 'gatewayID',
+            },
+          },
+        },
+      ];
+      jest.spyOn(config, 'get').mockReturnValue('');
+      GIDsLiquidity = { gatewayID: 10 };
+    });
+    test(`Shoiuld call addJob with correct parameters when pdaSubtype is equal to "Liquidity Provider" 
+        and PDA point is not equal to gatewayIDLiquidity`, async () => {
+      GIDsLiquidity = { gatewayID: 15 };
+      await coreService['getLiquidityProviderPDAsUpcomingActions'](
+        validStakersPDAs,
+        GIDsLiquidity,
+      );
+      expect(queue.addJob).toHaveBeenCalledWith({
+        action: 'update',
+        payload: {
+          pda_id: 'pda_id',
+          point: 15,
+        },
+      });
+    });
+    test(`Should not call addJob when pdaSubtype is equal to "Liquidity Provider"
+        and PDA point is equal to gatewayIDLiquidity`, async () => {
+      // Act
+      await coreService['getLiquidityProviderPDAsUpcomingActions'](
+        validStakersPDAs,
+        GIDsLiquidity,
+      );
+      expect(queue.addJob).not.toHaveBeenCalled();
+    });
+    test(`Should call addJob with the correct parameters when pdaSubtype is not equal to "Liquidity Provider"
+       and gatewayIDLiquidity is greater that 0`, async () => {
+      // Arrange
+      validStakersPDAs = [
+        {
+          id: 'pda_id',
+          status: 'Valid',
+          dataAsset: {
+            claim: {
+              point: 10,
+              pdaType: 'staker',
+              pdaSubtype: 'Validator',
+              type: 'custodian',
+              serviceDomain: 'example.comPOKT_GATEWAY_ID=gatewayID',
+              wallets: [
+                {
+                  address: 'address',
+                  amount: 1,
+                },
+              ],
+            },
+            owner: {
+              gatewayId: 'gatewayID',
+            },
+          },
+        },
+      ];
+      // Act
+      await coreService['getLiquidityProviderPDAsUpcomingActions'](
+        validStakersPDAs,
+        GIDsLiquidity,
+      );
+      expect(queue.addJob).toHaveBeenCalledWith({
+        action: 'add',
+        payload: {
+          image: '',
+          owner: 'gatewayID',
+          pda_sub_type: 'Liquidity Provider',
+          point: 10,
+        },
+      });
+    });
+    test('Should not call queue when pdaSubtype is not equal to "Liquidity Provider" and GIDsLiquidity is less that 1', async () => {
+      // Arrange
+      GIDsLiquidity = { gatewayID: 0 };
+      validStakersPDAs = [
+        {
+          id: 'pda_id',
+          status: 'Valid',
+          dataAsset: {
+            claim: {
+              point: 10,
+              pdaType: 'staker',
+              pdaSubtype: 'Validator',
+              type: 'custodian',
+              serviceDomain: 'example.comPOKT_GATEWAY_ID=gatewayID',
+              wallets: [
+                {
+                  address: 'address',
+                  amount: 1,
+                },
+              ],
+            },
+            owner: {
+              gatewayId: 'gatewayID',
+            },
+          },
+        },
+      ];
+      // Act
+      await coreService['getLiquidityProviderPDAsUpcomingActions'](
+        validStakersPDAs,
+        GIDsLiquidity,
+      );
+      // Assert
+      expect(queue.addJob).not.toHaveBeenCalled();
+    });
+  });
 });
