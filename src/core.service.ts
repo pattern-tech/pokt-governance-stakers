@@ -343,6 +343,7 @@ export class CoreService {
       this.logger.log('Completed task', CoreService.name);
     } catch (err) {
       this.logger.error(err.message, CoreService.name, { stack: err.stack });
+      throw err;
     }
   }
 }
