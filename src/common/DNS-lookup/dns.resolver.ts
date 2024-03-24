@@ -33,7 +33,7 @@ export class DNSResolver {
         }
       }
     } catch (err) {
-      this.logger.error(err.message, DNSResolver.name, { stack: err.stack });
+      this.logger.warn(err.message, DNSResolver.name, { stack: err.stack });
     }
 
     return false;
