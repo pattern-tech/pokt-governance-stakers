@@ -2,7 +2,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { DNSResolver } from '@common/DNS-lookup/dns.resolver';
 import { WinstonProvider } from '@common/winston/winston.provider';
-import { IssuedStakerPDA } from '../pda/interfaces/pda.interface';
+import {
+  IssuedCitizenAndStakerPDA,
+  IssuedStakerPDA,
+} from '../pda/interfaces/pda.interface';
 import { PoktScanOutput } from '../poktscan/interfaces/pokt-scan.interface';
 import { CoreService } from '../core.service';
 import { PDAService } from '../pda/pda.service';
@@ -578,6 +581,9 @@ describe('CoreService', () => {
       non_custodian: {},
     };
     const validStakersPDAs: Array<IssuedStakerPDA> = [];
+    test('Should be defined', () => {
+      expect(coreService['getValidatorPDAsUpcomingActions']).toBeDefined();
+    });
     test('Should call "setCustodianActions" and "setNonCustodianActions" methods with the correct parameters', async () => {
       // Arrange
       jest
@@ -604,6 +610,9 @@ describe('CoreService', () => {
 
   describe('recalculateValidatorPDAs', () => {
     const validStakersPDAs: Array<IssuedStakerPDA> = [];
+    test('Should be defined', () => {
+      expect(coreService['recalculateValidatorPDAs']).toBeDefined();
+    });
     test('Should call retrieve method from poktScanRetriever', async () => {
       // Act
       await coreService['recalculateValidatorPDAs'](validStakersPDAs);
@@ -655,6 +664,11 @@ describe('CoreService', () => {
       ];
       jest.spyOn(config, 'get').mockReturnValue('');
       GIDsLiquidity = { gatewayID: 10 };
+    });
+    test('Should be defined', () => {
+      expect(
+        coreService['getLiquidityProviderPDAsUpcomingActions'],
+      ).toBeDefined();
     });
     test(`Shoiuld call addJob with correct parameters when pdaSubtype is equal to "Liquidity Provider" 
         and PDA point is not equal to gatewayIDLiquidity`, async () => {
@@ -756,6 +770,99 @@ describe('CoreService', () => {
       );
       // Assert
       expect(queue.addJob).not.toHaveBeenCalled();
+    });
+  });
+  describe('recalculateLiquidityProviderPDAs', () => {
+    let validCitizenAndStakersPDAs: Array<IssuedCitizenAndStakerPDA>;
+    beforeEach(() => {
+      validCitizenAndStakersPDAs = [
+        {
+          id: 'pda_id',
+          status: 'Valid',
+          dataAsset: {
+            claim: {
+              point: 10,
+              pdaType: 'staker',
+              pdaSubtype: 'Validator',
+              type: 'custodian',
+              serviceDomain: 'example.comPOKT_GATEWAY_ID=gatewayID',
+              wallets: [
+                {
+                  address: 'address',
+                  amount: 1,
+                },
+              ],
+            },
+            owner: {
+              gatewayId: 'gatewayID',
+            },
+          },
+        },
+        {
+          id: 'pda_id2',
+          status: 'Valid',
+          dataAsset: {
+            claim: {
+              point: 1,
+              pdaType: 'citizen',
+              pdaSubtype: 'POKT DAO',
+            },
+            owner: {
+              gatewayId: 'gatewayID2',
+            },
+          },
+        },
+      ];
+      jest
+        .spyOn(coreService as any, 'getLiquidityProviderPDAsUpcomingActions')
+        .mockResolvedValue('');
+    });
+    test('Should ne defined', () => {
+      expect(coreService['recalculateLiquidityProviderPDAs']).toBeDefined();
+    });
+    test('Should call getUserEVMWallets method for each PDA with correct parameter', async () => {
+      await coreService['recalculateLiquidityProviderPDAs'](
+        validCitizenAndStakersPDAs,
+      );
+      expect(pdaService.getUserEVMWallets).toHaveBeenCalledTimes(2);
+      expect(pdaService.getUserEVMWallets).toHaveBeenCalledWith('gatewayID');
+      expect(pdaService.getUserEVMWallets).toHaveBeenCalledWith('gatewayID2');
+    });
+    test('Should nit call getUserEVMWallets method when there is no validCitizenAndStakersPDAs', async () => {
+      validCitizenAndStakersPDAs = [];
+      await coreService['recalculateLiquidityProviderPDAs'](
+        validCitizenAndStakersPDAs,
+      );
+      expect(pdaService.getUserEVMWallets).toHaveBeenCalledTimes(0);
+    });
+    test('Should call getUsersWPoktLiquidity with correct parameter', async () => {
+      jest
+        .spyOn(pdaService, 'getUserEVMWallets')
+        .mockResolvedValueOnce(['ethWallet1', 'ethWallet2']);
+      jest
+        .spyOn(pdaService, 'getUserEVMWallets')
+        .mockResolvedValueOnce(['ethWallet3', 'ethWallet4']);
+      await coreService['recalculateLiquidityProviderPDAs'](
+        validCitizenAndStakersPDAs,
+      );
+      expect(wpoktService.getUsersWPoktLiquidity).toHaveBeenCalledWith({
+        gatewayID: ['ethWallet1', 'ethWallet2'],
+        gatewayID2: ['ethWallet3', 'ethWallet4'],
+      });
+    });
+    test('Should call getLiquidityProviderPDAsUpcomingActions method with correct parameters', async () => {
+      jest
+        .spyOn(wpoktService, 'getUsersWPoktLiquidity')
+        .mockResolvedValue({ gatewayID: 1, gatewayID2: 2 });
+      await coreService['recalculateLiquidityProviderPDAs'](
+        validCitizenAndStakersPDAs,
+      );
+      expect(
+        coreService['getLiquidityProviderPDAsUpcomingActions'],
+      ).toHaveBeenCalledWith(validCitizenAndStakersPDAs, {
+        gatewayID: 1,
+        gatewayID2: 2,
+      });
     });
   });
 });

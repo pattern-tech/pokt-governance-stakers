@@ -10,4 +10,5 @@ export const PDAService = jest.fn().mockReturnValue({
   getIssuedStakerPDAs: jest.fn(),
   getUpdateStakerPdaGQL: jest.fn(),
   updateIssuedStakerPDAs: jest.fn(),
+  getUserEVMWallets: jest.fn(),
 });
