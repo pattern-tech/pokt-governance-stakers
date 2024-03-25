@@ -5,6 +5,7 @@ import { AxiosResponse } from 'axios';
 import lodash from 'lodash';
 import { of } from 'rxjs';
 import { WinstonProvider } from '@common/winston/winston.provider';
+import { WPoktLiquidityV2Response } from '../interfaces/v2.interface';
 import { WPoktService } from '../wpokt.service';
 
 // Mock the WinstonProvider
@@ -181,6 +182,101 @@ describe('PDAService', () => {
       expect(await wpokt['getUsersWPoktLiquidityV2'](usersWalletAddr)).toEqual(
         {},
       );
+    });
+  });
+
+  describe('serializeUsersWPoktLiquidityV2', () => {
+    let response: WPoktLiquidityV2Response;
+    beforeEach(() => {
+      response = {
+        data: {
+          positions: [
+            {
+              user: {
+                id: '0x97d07b09537088985d5ec3b5ba654e505244b99f',
+              },
+              liquidityTokenBalance: '0.032956972206074763',
+              pair: {
+                totalSupply: '0.048851216609091387',
+                token0: {
+                  id: '0x67f4c72a50f8df6487720261e188f2abe83f57d7',
+                },
+                reserve0: '7032719.501123',
+                token1: {
+                  id: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+                },
+                reserve1: '401.748022236913933935',
+              },
+            },
+          ],
+        },
+      };
+      jest.spyOn(config, 'get').mockReturnValue('');
+    });
+    test('Should be defined', () => {
+      expect(wpokt['serializeUsersWPoktLiquidityV2']).toBeDefined();
+    });
+    test('Should call get method from config with correct parameter', () => {
+      wpokt['serializeUsersWPoktLiquidityV2'](response);
+      expect(config.get).toHaveBeenCalledWith('UNISWAP_WPOKT_TOKEN_ID');
+    });
+    test('Should calculate the point and set the point for each user id', () => {
+      expect(wpokt['serializeUsersWPoktLiquidityV2'](response)).toEqual({
+        '0x97d07b09537088985d5ec3b5ba654e505244b99f': 271.0351823713515,
+      });
+    });
+    test('Should return {} when response is null', async () => {
+      response = {
+        data: {
+          positions: [],
+        },
+      };
+      expect(wpokt['serializeUsersWPoktLiquidityV2'](response)).toEqual({});
+    });
+    test('Should apply the sum of points for a user id who has more that 1 wallet', async () => {
+      response = {
+        data: {
+          positions: [
+            {
+              user: {
+                id: '0x97d07b09537088985d5ec3b5ba654e505244b99f',
+              },
+              liquidityTokenBalance: '0.032956972206074763',
+              pair: {
+                totalSupply: '0.048851216609091387',
+                token0: {
+                  id: '0x67f4c72a50f8df6487720261e188f2abe83f57d7',
+                },
+                reserve0: '7032719.501123',
+                token1: {
+                  id: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+                },
+                reserve1: '401.748022236913933935',
+              },
+            },
+            {
+              user: {
+                id: '0x97d07b09537088985d5ec3b5ba654e505244b99f',
+              },
+              liquidityTokenBalance: '0.032956972206074763',
+              pair: {
+                totalSupply: '0.048851216609091387',
+                token0: {
+                  id: '0x67f4c72a50f8df6487720261e188f2abe83f57d7',
+                },
+                reserve0: '7032719.501123',
+                token1: {
+                  id: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+                },
+                reserve1: '401.748022236913933935',
+              },
+            },
+          ],
+        },
+      };
+      expect(wpokt['serializeUsersWPoktLiquidityV2'](response)).toEqual({
+        '0x97d07b09537088985d5ec3b5ba654e505244b99f': 542.070364742703,
+      });
     });
   });
 });
