@@ -61,6 +61,7 @@ describe('PDAService', () => {
       expect(wpokt['request']).toBeDefined();
     });
     test('Should call debug from logger with the correct parameters', () => {
+      // Assert
       expect(logger.debug).toHaveBeenCalledWith(
         'request method\n' +
           `input => ${JSON.stringify({ endpoint, query, variables })}\n` +
@@ -103,23 +104,30 @@ describe('PDAService', () => {
       jest.spyOn(wpokt as any, 'request').mockReturnValue({});
     });
     test('Should be defined', () => {
+      // Assert
       expect(wpokt['requestV2']).toBeDefined();
     });
     test('Should call get method from config', async () => {
+      // Act
       await wpokt['requestV2'](query, variables);
+      // Assert
       expect(config.get).toHaveBeenCalledWith('UNISWAP_V2_ENDPOINT_URL');
     });
     test('Should call request method with correct parameters', async () => {
+      // Act
       await wpokt['requestV2'](query, variables);
+      // Assert
       expect(wpokt['request']).toHaveBeenCalledWith('', query, variables);
     });
   });
 
   describe('getUsersWPoktLiquidityV2GQL', () => {
     test('Should be defined', () => {
+      // Assert
       expect(wpokt['getUsersWPoktLiquidityV2GQL']).toBeDefined();
     });
     test('Should return getUsersWPoktLiquidityV2 graphQL query', () => {
+      // Assert
       expect(wpokt['getUsersWPoktLiquidityV2GQL']()).toBe(
         `
     query UsersLiquidity($Users_Wallet_Addr: [String!]!, $WPokt_ID: String!, $Pool_ID: String!) {
@@ -166,19 +174,26 @@ describe('PDAService', () => {
       expect(wpokt['getUsersWPoktLiquidityV2']).toBeDefined();
     });
     test('Should call getUsersWPoktLiquidityV2GQL method', async () => {
+      // Act
       await wpokt['getUsersWPoktLiquidityV2'](usersWalletAddr);
+      // Assert
       expect(wpokt['getUsersWPoktLiquidityV2GQL']).toHaveBeenCalled();
     });
     test('Should call map method from lodash with correct parameters', async () => {
+      // Act
       await wpokt['getUsersWPoktLiquidityV2'](usersWalletAddr);
+      // Assert
       expect(lodash.map).toHaveBeenCalledWith(usersWalletAddr, lodash.toLower);
     });
     test('Should call get method from config with correct parameter', async () => {
+      // Act
       await wpokt['getUsersWPoktLiquidityV2'](usersWalletAddr);
+      // Assert
       expect(config.get).toHaveBeenCalledWith('UNISWAP_WPOKT_TOKEN_ID');
       expect(config.get).toHaveBeenCalledWith('UNISWAP_V2_WPOKT_POOL_ID');
     });
     test('Should return value from requestV2 method', async () => {
+      // Assert
       expect(await wpokt['getUsersWPoktLiquidityV2'](usersWalletAddr)).toEqual(
         {},
       );
@@ -214,26 +229,33 @@ describe('PDAService', () => {
       jest.spyOn(config, 'get').mockReturnValue('');
     });
     test('Should be defined', () => {
+      // Assert
       expect(wpokt['serializeUsersWPoktLiquidityV2']).toBeDefined();
     });
     test('Should call get method from config with correct parameter', () => {
+      // Act
       wpokt['serializeUsersWPoktLiquidityV2'](response);
+      // Assert
       expect(config.get).toHaveBeenCalledWith('UNISWAP_WPOKT_TOKEN_ID');
     });
     test('Should calculate the point and set the point for each user id', () => {
+      // Assert
       expect(wpokt['serializeUsersWPoktLiquidityV2'](response)).toEqual({
         '0x97d07b09537088985d5ec3b5ba654e505244b99f': 271.0351823713515,
       });
     });
     test('Should return {} when response is null', async () => {
+      // Arrange
       response = {
         data: {
           positions: [],
         },
       };
+      // Assert
       expect(wpokt['serializeUsersWPoktLiquidityV2'](response)).toEqual({});
     });
     test('Should apply the sum of points for a user id who has more that 1 wallet', async () => {
+      // Arrange
       response = {
         data: {
           positions: [
@@ -274,6 +296,7 @@ describe('PDAService', () => {
           ],
         },
       };
+      // Assert
       expect(wpokt['serializeUsersWPoktLiquidityV2'](response)).toEqual({
         '0x97d07b09537088985d5ec3b5ba654e505244b99f': 542.070364742703,
       });
@@ -301,18 +324,23 @@ describe('PDAService', () => {
         });
     });
     test('Shouldbe defined', () => {
+      // Assert
       expect(wpokt.getUsersWPoktLiquidity).toBeDefined();
     });
 
     test('Should return an empty object when no GIDsWalletAddresses is equal to {}', async () => {
+      // Arrange
       GIDsWalletAddresses = {};
+      // Assert
       expect(await wpokt.getUsersWPoktLiquidity(GIDsWalletAddresses)).toEqual(
         {},
       );
     });
     test(`Should iterate on GIDs ten by ten, collect all wallet addresses realated to each GID and add all of them to an arry.
         Then should call "getUsersWPoktLiquidityV2" method using that array`, async () => {
+      // Act
       await wpokt.getUsersWPoktLiquidity(GIDsWalletAddresses);
+      // Assert
       expect(wpokt['getUsersWPoktLiquidityV2']).toHaveBeenCalledWith([
         'wallet1',
         'Wallet2',
@@ -323,23 +351,28 @@ describe('PDAService', () => {
       ]);
     });
     test('Should call "serializeUsersWPoktLiquidityV2" method with correct parameter', async () => {
+      // Act
       await wpokt.getUsersWPoktLiquidity(GIDsWalletAddresses);
+      // Assert
       expect(wpokt['serializeUsersWPoktLiquidityV2']).toHaveBeenCalledWith({
         data: 'some fake data ',
       });
     });
     test('Should add GID to result with point 0 and increase it if needed', async () => {
+      // Arrange
       GIDsWalletAddresses = { GID3: ['wallet7'] };
       jest
         .spyOn(wpokt as any, 'serializeUsersWPoktLiquidityV2')
         .mockReturnValue({
           wallet7: 0,
         });
+      // Assert
       expect(await wpokt.getUsersWPoktLiquidity(GIDsWalletAddresses)).toEqual({
         GID3: 0,
       });
     });
     test('Should iterate on GIDs ten by ten, calculate point for each GID and return all records', async () => {
+      // Assert
       expect(await wpokt.getUsersWPoktLiquidity(GIDsWalletAddresses)).toEqual({
         GID1: 6,
         GID2: 15,

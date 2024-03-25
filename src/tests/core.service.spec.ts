@@ -818,45 +818,57 @@ describe('CoreService', () => {
         .mockResolvedValue('');
     });
     test('Should ne defined', () => {
+      //Assert
       expect(coreService['recalculateLiquidityProviderPDAs']).toBeDefined();
     });
     test('Should call getUserEVMWallets method for each PDA with correct parameter', async () => {
+      // Act
       await coreService['recalculateLiquidityProviderPDAs'](
         validCitizenAndStakersPDAs,
       );
+      // assert
       expect(pdaService.getUserEVMWallets).toHaveBeenCalledTimes(2);
       expect(pdaService.getUserEVMWallets).toHaveBeenCalledWith('gatewayID');
       expect(pdaService.getUserEVMWallets).toHaveBeenCalledWith('gatewayID2');
     });
     test('Should nit call getUserEVMWallets method when there is no validCitizenAndStakersPDAs', async () => {
+      // Arrange
       validCitizenAndStakersPDAs = [];
+      // Act
       await coreService['recalculateLiquidityProviderPDAs'](
         validCitizenAndStakersPDAs,
       );
+      // Assert
       expect(pdaService.getUserEVMWallets).toHaveBeenCalledTimes(0);
     });
     test('Should call getUsersWPoktLiquidity with correct parameter', async () => {
+      // Arrange
       jest
         .spyOn(pdaService, 'getUserEVMWallets')
         .mockResolvedValueOnce(['ethWallet1', 'ethWallet2']);
       jest
         .spyOn(pdaService, 'getUserEVMWallets')
         .mockResolvedValueOnce(['ethWallet3', 'ethWallet4']);
+      // Act
       await coreService['recalculateLiquidityProviderPDAs'](
         validCitizenAndStakersPDAs,
       );
+      // Assert
       expect(wpoktService.getUsersWPoktLiquidity).toHaveBeenCalledWith({
         gatewayID: ['ethWallet1', 'ethWallet2'],
         gatewayID2: ['ethWallet3', 'ethWallet4'],
       });
     });
     test('Should call getLiquidityProviderPDAsUpcomingActions method with correct parameters', async () => {
+      // Arrabge
       jest
         .spyOn(wpoktService, 'getUsersWPoktLiquidity')
         .mockResolvedValue({ gatewayID: 1, gatewayID2: 2 });
+      // Act
       await coreService['recalculateLiquidityProviderPDAs'](
         validCitizenAndStakersPDAs,
       );
+      // Assert
       expect(
         coreService['getLiquidityProviderPDAsUpcomingActions'],
       ).toHaveBeenCalledWith(validCitizenAndStakersPDAs, {
@@ -876,11 +888,14 @@ describe('CoreService', () => {
       }
     });
     test('Should call getIssuedCitizenAndStakerPDAs method', async () => {
+      // Act
       await coreService.handler();
+      // Assert
       expect(pdaService.getIssuedCitizenAndStakerPDAs).toHaveBeenCalled();
     });
 
     test('Should call recalculateValidatorPDAs method with correct parameter', async () => {
+      // Arrange
       jest
         .spyOn(pdaService, 'getIssuedCitizenAndStakerPDAs')
         .mockResolvedValue([
@@ -924,7 +939,9 @@ describe('CoreService', () => {
       jest
         .spyOn(coreService as any, 'recalculateValidatorPDAs')
         .mockResolvedValue('');
+      // Act
       await coreService.handler();
+      // Assert
       expect(coreService['recalculateValidatorPDAs']).toHaveBeenCalledWith([
         {
           id: 'pda_id',
@@ -951,6 +968,7 @@ describe('CoreService', () => {
       ]);
     });
     test('Should call recalculateLiquidityProviderPDAs method with correct parameter', async () => {
+      // Arrange
       const mockPDAs: any = [
         {
           id: 'pda_id',
@@ -995,13 +1013,17 @@ describe('CoreService', () => {
       jest
         .spyOn(coreService as any, 'recalculateLiquidityProviderPDAs')
         .mockResolvedValue('');
+      // Act
       await coreService.handler();
+      // Assert
       expect(
         coreService['recalculateLiquidityProviderPDAs'],
       ).toHaveBeenCalledWith(mockPDAs);
     });
     test('Should call log method from logger with correct parameter', async () => {
+      // Act
       await coreService.handler();
+      // Assert
       expect(logger.log).toHaveBeenCalledWith('Started task', CoreService.name);
       expect(logger.log).toHaveBeenCalledWith(
         'Completed task',
@@ -1009,14 +1031,19 @@ describe('CoreService', () => {
       );
     });
     test('Should call jobListener and stopJobListener methods with correct pat=rameter', async () => {
+      // Arrange
       jest.spyOn(pdaService, 'jobListener').mockResolvedValue(1 as any);
+      // Act
       await coreService.handler();
       expect(pdaService.jobListener).toHaveBeenCalledWith(2000, 10);
+      // Assert
       expect(pdaService.stopJobListener).toHaveBeenCalledWith(1);
     });
     test('Should call reset and wait wethods from pdaQueue', async () => {
+      // Act
       await coreService.handler();
       expect(queue.reset).toHaveBeenCalled();
+      // Assert
       expect(queue.wait).toHaveBeenCalled();
     });
   });

@@ -112,6 +112,7 @@ describe('PDAService', () => {
       );
     });
     test('Should call debug from logger with the correct parameters for the second call', () => {
+      // Assert
       expect(logger.debug).toHaveBeenCalledWith(
         `response => ${JSON.stringify({
           status: 200,
@@ -321,34 +322,49 @@ describe('PDAService', () => {
     });
     test('Should not add PDA if status is not Valid', async () => {
       // Arrange
-      PDAResponse = {
-        data: {
-          issuedPDAs: [
-            {
-              id: 'id',
-              status: 'Expired',
-              dataAsset: {
-                claim: {
-                  point: 4,
-                  pdaType: 'staker',
-                  pdaSubtype: 'Gateway',
-                  type: 'custodian',
-                  serviceDomain: '',
-                  wallets: [
-                    {
-                      address: 'address',
-                      amount: 1,
-                    },
-                  ],
-                },
-                owner: {
-                  gatewayId: 'gatewayID',
+      const citizenPDA: IssuedCitizenAndStakerPDA = {
+          id: 'pda_id2',
+          status: 'Suspended',
+          dataAsset: {
+            claim: {
+              point: 1,
+              pdaType: 'citizen',
+              pdaSubtype: 'POKT DAO',
+            },
+            owner: {
+              gatewayId: 'gatewayID2',
+            },
+          },
+        },
+        PDAResponse = {
+          data: {
+            issuedPDAs: [
+              {
+                id: 'id',
+                status: 'Expired',
+                dataAsset: {
+                  claim: {
+                    point: 4,
+                    pdaType: 'staker',
+                    pdaSubtype: 'Gateway',
+                    type: 'custodian',
+                    serviceDomain: '',
+                    wallets: [
+                      {
+                        address: 'address',
+                        amount: 1,
+                      },
+                    ],
+                  },
+                  owner: {
+                    gatewayId: 'gatewayID',
+                  },
                 },
               },
-            },
-          ],
-        },
-      };
+              citizenPDA,
+            ],
+          },
+        };
       jest
         .spyOn(service as any, 'request')
         .mockReturnValueOnce(issuedPDACountResponse);
@@ -358,44 +374,27 @@ describe('PDAService', () => {
       // Assert
       expect(returnValue).toEqual([]);
     });
-    // test('Should not add PDA if pdaType is not staker', async () => {
-    //   // Arrange
-    //   PDAResponse = {
-    //     data: {
-    //       issuedPDAs: [
-    //         {
-    //           id: 'id',
-    //           status: 'Valid',
-    //           dataAsset: {
-    //             claim: {
-    //               point: 17,
-    //               pdaType: 'citizen',
-    //               pdaSubtype: 'POKT DAO',
-    //             },
-    //             owner: {
-    //               gatewayId: '17',
-    //             },
-    //           },
-    //         },
-    //       ],
-    //     },
-    //   };
-    //   jest
-    //     .spyOn(service as any, 'request')
-    //     .mockReturnValueOnce(issuedPDACountResponse);
-    //   jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
-    //   // Act
-    //   returnValue = await service.getIssuedStakerPDAs();
-    //   // Assert
-    //   expect(returnValue).toEqual([]);
-    // });
     test('Should store related PDAs', async () => {
       // Arrange
-      PDAResponse = {
-        data: {
-          issuedPDAs: [PDA],
+      const citizenPDA: IssuedCitizenAndStakerPDA = {
+          id: 'pda_id2',
+          status: 'Valid',
+          dataAsset: {
+            claim: {
+              point: 1,
+              pdaType: 'citizen',
+              pdaSubtype: 'POKT DAO',
+            },
+            owner: {
+              gatewayId: 'gatewayID2',
+            },
+          },
         },
-      };
+        PDAResponse = {
+          data: {
+            issuedPDAs: [PDA, citizenPDA],
+          },
+        };
       jest
         .spyOn(service as any, 'request')
         .mockReturnValueOnce(issuedPDACountResponse);
@@ -403,7 +402,7 @@ describe('PDAService', () => {
       // Act
       returnValue = await service.getIssuedCitizenAndStakerPDAs();
       // Assert
-      expect(returnValue).toEqual([PDA]);
+      expect(returnValue).toEqual([PDA, citizenPDA]);
     });
     test('Should call request method two times for each PDA with correct parameters', async () => {
       // Arrange
@@ -853,12 +852,14 @@ and call method request with correct parameters`, async () => {
       jest.clearAllTimers();
     });
     test('should call issueNewStakerPDA for "add" action', async () => {
+      // Arrange
       jest.useFakeTimers();
       const latency = 1000;
       const chuckSize = 10;
       const intervalIdPromise = service.jobListener(latency, chuckSize);
       const intervalId = await intervalIdPromise;
       jest.advanceTimersByTime(latency);
+      //Assert
       expect(service.issueNewStakerPDA).toHaveBeenCalledWith({
         image: '',
         point: 1,
@@ -869,12 +870,14 @@ and call method request with correct parameters`, async () => {
       clearInterval(intervalId);
     });
     test('should call issueNewStakerPDA for "update" action', async () => {
+      // Arrange
       jest.useFakeTimers();
       const latency = 1000;
       const chuckSize = 10;
       const intervalIdPromise = service.jobListener(latency, chuckSize);
       const intervalId = await intervalIdPromise;
       jest.advanceTimersByTime(latency);
+      // Assert
       expect(service.updateIssuedStakerPDA).toHaveBeenCalledWith({
         pda_id: '',
         point: 1,
@@ -882,6 +885,7 @@ and call method request with correct parameters`, async () => {
       clearInterval(intervalId);
     });
     test('Should call all method from Promise whrn promises.length > 0 with correct parameters', async () => {
+      // Arrange
       jest.useFakeTimers();
       jest.spyOn(Promise, 'all').mockResolvedValue;
       const latency = 1000;
@@ -889,6 +893,7 @@ and call method request with correct parameters`, async () => {
       const intervalIdPromise = service.jobListener(latency, chuckSize);
       const intervalId = await intervalIdPromise;
       jest.advanceTimersByTime(latency);
+      // Assert
       expect(Promise.all).toHaveBeenCalledWith([{}, {}]);
       clearInterval(intervalId);
     });
@@ -896,12 +901,15 @@ and call method request with correct parameters`, async () => {
 
   describe('stopJobListener', () => {
     test('Should be defined', async () => {
+      // Assert
       expect(service.stopJobListener).toBeDefined();
     });
     test('Should call clearInterval method with the correct parameter', async () => {
+      // Arrange
       const listenerID: any = 12;
       jest.spyOn(global, 'clearInterval').mockReturnValue;
       await service.stopJobListener(listenerID);
+      // Assert
       expect(clearInterval).toHaveBeenCalledWith(listenerID);
     });
   });
