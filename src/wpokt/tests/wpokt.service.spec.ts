@@ -279,4 +279,71 @@ describe('PDAService', () => {
       });
     });
   });
+  describe('getUsersWPoktLiquidity', () => {
+    let GIDsWalletAddresses: Record<string, Array<string>>;
+    beforeEach(() => {
+      GIDsWalletAddresses = {
+        GID1: ['wallet1', 'Wallet2', 'wallet3'],
+        GID2: ['wallet4', 'Wallet5', 'wallet6'],
+      };
+      jest
+        .spyOn(wpokt as any, 'getUsersWPoktLiquidityV2')
+        .mockReturnValue({ data: 'some fake data ' });
+      jest
+        .spyOn(wpokt as any, 'serializeUsersWPoktLiquidityV2')
+        .mockReturnValue({
+          wallet1: 1,
+          Wallet2: 2,
+          wallet3: 3,
+          wallet4: 4,
+          Wallet5: 5,
+          wallet6: 6,
+        });
+    });
+    test('Shouldbe defined', () => {
+      expect(wpokt.getUsersWPoktLiquidity).toBeDefined();
+    });
+
+    test('Should return an empty object when no GIDsWalletAddresses is equal to {}', async () => {
+      GIDsWalletAddresses = {};
+      expect(await wpokt.getUsersWPoktLiquidity(GIDsWalletAddresses)).toEqual(
+        {},
+      );
+    });
+    test(`Should iterate on GIDs ten by ten, collect all wallet addresses realated to each GID and add all of them to an arry.
+        Then should call "getUsersWPoktLiquidityV2" method using that array`, async () => {
+      await wpokt.getUsersWPoktLiquidity(GIDsWalletAddresses);
+      expect(wpokt['getUsersWPoktLiquidityV2']).toHaveBeenCalledWith([
+        'wallet1',
+        'Wallet2',
+        'wallet3',
+        'wallet4',
+        'Wallet5',
+        'wallet6',
+      ]);
+    });
+    test('Should call "serializeUsersWPoktLiquidityV2" method with correct parameter', async () => {
+      await wpokt.getUsersWPoktLiquidity(GIDsWalletAddresses);
+      expect(wpokt['serializeUsersWPoktLiquidityV2']).toHaveBeenCalledWith({
+        data: 'some fake data ',
+      });
+    });
+    test('Should add GID to result with point 0 and increase it if needed', async () => {
+      GIDsWalletAddresses = { GID3: ['wallet7'] };
+      jest
+        .spyOn(wpokt as any, 'serializeUsersWPoktLiquidityV2')
+        .mockReturnValue({
+          wallet7: 0,
+        });
+      expect(await wpokt.getUsersWPoktLiquidity(GIDsWalletAddresses)).toEqual({
+        GID3: 0,
+      });
+    });
+    test('Should iterate on GIDs ten by ten, calculate point for each GID and return all records', async () => {
+      expect(await wpokt.getUsersWPoktLiquidity(GIDsWalletAddresses)).toEqual({
+        GID1: 6,
+        GID2: 15,
+      });
+    });
+  });
 });

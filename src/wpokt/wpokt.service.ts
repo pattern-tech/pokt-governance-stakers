@@ -147,29 +147,6 @@ export class WPoktService {
       const partitionV2Response = await this.getUsersWPoktLiquidityV2(
         partitionWalletAddresses,
       );
-      // const partitionV2Response: WPoktLiquidityV2Response = {
-      //   data: {
-      //     positions: [
-      //       {
-      //         user: {
-      //           id: '0x97d07b09537088985d5ec3b5ba654e505244b99f',
-      //         },
-      //         liquidityTokenBalance: '0.032956972206074763',
-      //         pair: {
-      //           totalSupply: '0.048851216609091387',
-      //           token0: {
-      //             id: '0x67f4c72a50f8df6487720261e188f2abe83f57d7',
-      //           },
-      //           reserve0: '7032719.501123',
-      //           token1: {
-      //             id: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
-      //           },
-      //           reserve1: '401.748022236913933935',
-      //         },
-      //       },
-      //     ],
-      //   },
-      // };
       const partitionResult =
         this.serializeUsersWPoktLiquidityV2(partitionV2Response);
 
