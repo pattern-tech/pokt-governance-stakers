@@ -6,6 +6,7 @@ import { of } from 'rxjs';
 import { WinstonProvider } from '@common/winston/winston.provider';
 import {
   IssueNewStakerPDAResponse,
+  IssuedCitizenAndStakerPDA,
   IssuedPDACountResponse,
   IssuedPDAsResponse,
   IssuedStakerPDA,
@@ -208,9 +209,9 @@ describe('PDAService', () => {
     });
   });
 
-  describe('getIssuedStakerPDAs', () => {
+  describe('getIssuedCitizenAndStakerPDAs', () => {
     let issuedPDACountResponse: IssuedPDACountResponse;
-    let returnValue: Array<IssuedStakerPDA>;
+    let returnValue: Array<IssuedCitizenAndStakerPDA>;
     let PDAResponse: IssuedPDAsResponse;
     let PDA: IssuedStakerPDA;
     beforeEach(() => {
@@ -245,7 +246,7 @@ describe('PDAService', () => {
     });
     test('Should be defined', () => {
       // Assert
-      expect(service.getIssuedStakerPDAs).toBeDefined();
+      expect(service.getIssuedCitizenAndStakerPDAs).toBeDefined();
     });
     test('Should call getIssuedPDACountGQL & getIssuedPDAsGQL', async () => {
       // Arrange
@@ -264,7 +265,7 @@ describe('PDAService', () => {
         .mockReturnValueOnce(issuedPDACountResponse);
       jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
       // Act
-      await service.getIssuedStakerPDAs();
+      await service.getIssuedCitizenAndStakerPDAs();
       // Assert
       expect(service['getIssuedPDACountGQL']).toHaveBeenCalledTimes(1);
       expect(service['getIssuedPDAsGQL']).toHaveBeenCalledTimes(1);
@@ -275,7 +276,7 @@ describe('PDAService', () => {
         .spyOn(service as any, 'request')
         .mockReturnValueOnce(issuedPDACountResponse);
       jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
-      await service.getIssuedStakerPDAs();
+      await service.getIssuedCitizenAndStakerPDAs();
       expect(config.get).toHaveBeenCalledWith('POKT_ORG_GATEWAY_ID');
     });
     test('Should throw Error when countResponse.data === null', async () => {
@@ -288,7 +289,7 @@ describe('PDAService', () => {
         .mockReturnValueOnce(issuedPDACountResponse);
       try {
         // Act
-        await service.getIssuedStakerPDAs();
+        await service.getIssuedCitizenAndStakerPDAs();
         // to check the case if countResponse.data === null and Error does not run
         throw new Error('Test failed');
       } catch (err) {
@@ -311,7 +312,7 @@ describe('PDAService', () => {
         .mockReturnValueOnce(issuedPDACountResponse);
       jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
       // Act
-      returnValue = await service.getIssuedStakerPDAs();
+      returnValue = await service.getIssuedCitizenAndStakerPDAs();
       // Assert
       expect(returnValue).toEqual([]);
     });
@@ -350,7 +351,7 @@ describe('PDAService', () => {
         .mockReturnValueOnce(issuedPDACountResponse);
       jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
       // Act
-      returnValue = await service.getIssuedStakerPDAs();
+      returnValue = await service.getIssuedCitizenAndStakerPDAs();
       // Assert
       expect(returnValue).toEqual([]);
     });
@@ -397,7 +398,7 @@ describe('PDAService', () => {
         .mockReturnValueOnce(issuedPDACountResponse);
       jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
       // Act
-      returnValue = await service.getIssuedStakerPDAs();
+      returnValue = await service.getIssuedCitizenAndStakerPDAs();
       // Assert
       expect(returnValue).toEqual([PDA]);
     });
@@ -413,7 +414,7 @@ describe('PDAService', () => {
         .mockReturnValueOnce(issuedPDACountResponse);
       jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
       // act
-      await service.getIssuedStakerPDAs();
+      await service.getIssuedCitizenAndStakerPDAs();
       // Assert
       expect(service['request']).toHaveBeenCalledWith('', {
         org_gateway_id: 'POKT_ORG_GATEWAY_ID',
@@ -455,14 +456,14 @@ describe('PDAService', () => {
         .mockReturnValueOnce(issuedPDACountResponse);
       jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
       // Act
-      await service.getIssuedStakerPDAs();
+      await service.getIssuedCitizenAndStakerPDAs();
       // Rearrange
       jest
         .spyOn(service as any, 'request')
         .mockReturnValueOnce(issuedPDACountResponse);
       jest.spyOn(service as any, 'request').mockReturnValueOnce(PDAResponse);
       //React
-      returnValue = await service.getIssuedStakerPDAs();
+      returnValue = await service.getIssuedCitizenAndStakerPDAs();
       // Assert
       expect(returnValue).toEqual([PDA]);
       expect(service['request']).toHaveBeenCalledTimes(4);
@@ -472,7 +473,7 @@ describe('PDAService', () => {
   describe('getIssueStakerPdaGQL', () => {
     test('Should be defined', () => {
       // Assert
-      expect(service['getIssuedStakerPDAs']).toBeDefined();
+      expect(service['getIssueStakerPdaGQL']).toBeDefined();
     });
     test('Should return getIssueStakerPda graphQL query', () => {
       // Assert
@@ -483,6 +484,7 @@ describe('PDAService', () => {
       $data_model_id: String!
       $owner: String!
       $owner_type: UserIdentifierType!
+      $image: String!
       $claim: JSON!
     ) {
       createPDA(
@@ -491,6 +493,7 @@ describe('PDAService', () => {
               title: "Pocket Network Staker"
               description: "Servicer or Validator Path"
               owner: { type: $owner_type, value: $owner }
+              image: $image
               organization: { type: GATEWAY_ID, value: $org_gateway_id }
               claim: $claim
           }
@@ -515,6 +518,7 @@ describe('PDAService', () => {
       };
       addActions = {
         point: 1,
+        image: '',
         pda_sub_type: 'Gateway',
         node_type: 'custodian',
         owner: 'owner',
@@ -540,7 +544,7 @@ describe('PDAService', () => {
     });
     test('Should call get method from config', async () => {
       // Act
-      await service.getIssuedStakerPDAs();
+      await service.getIssuedCitizenAndStakerPDAs();
       // Assert
       expect(config.get).toHaveBeenCalledWith('POKT_ORG_GATEWAY_ID');
     });
@@ -554,6 +558,7 @@ and call method request with correct parameters`, async () => {
       // Arrange
       addActions = {
         point: 1,
+        image: '',
         pda_sub_type: 'Gateway',
         node_type: 'non-custodian',
         owner: 'owner',
@@ -569,6 +574,7 @@ and call method request with correct parameters`, async () => {
       // Assert
       expect(service['request']).toHaveBeenCalledWith('mutationCreatePDA', {
         data_model_id: '',
+        image: '',
         org_gateway_id: '',
         owner: 'owner',
         owner_type: 'POKT',
@@ -593,6 +599,7 @@ and call method request with correct parameters`, async () => {
       // Assert
       expect(service['request']).toHaveBeenCalledWith('mutationCreatePDA', {
         data_model_id: '',
+        image: '',
         org_gateway_id: '',
         owner: 'owner',
         owner_type: 'GATEWAY_ID',
