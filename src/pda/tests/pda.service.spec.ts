@@ -21,6 +21,9 @@ import { PDAQueue } from '../pda.queue';
 // Mock the WinstonProvider
 jest.mock('@common/winston/winston.provider');
 
+// Mock the the Queue
+jest.mock('@common/utils/queue.util');
+
 // Describe the test suite for the PDAService
 describe('PDAService', () => {
   let service: PDAService;
@@ -592,7 +595,7 @@ and call method request with correct parameters`, async () => {
         },
       });
     });
-    test(`Should set 'owner_type' ='GATEWAY_ID' and set related 'serviceDomain' when 'node_type' = 'custodian' 
+    test(`Should set 'owner_type' = 'GATEWAY_ID' and set related 'serviceDomain' when 'node_type' = 'custodian' 
 and call method request with correct parameters`, async () => {
       // Act
       await service.issueNewStakerPDA(addActions);
@@ -818,6 +821,88 @@ and call method request with correct parameters`, async () => {
         .mockResolvedValue(authreturnValue);
       // Assert
       expect(await service.getUserEVMWallets(user_GID)).toEqual([]);
+    });
+  });
+
+  describe('jobListener', () => {
+    beforeEach(() => {
+      jest.spyOn(service as any, 'issueNewStakerPDA').mockReturnValue({});
+      jest.spyOn(service as any, 'updateIssuedStakerPDA').mockReturnValue({});
+      jest.spyOn(queue, 'popJobs').mockReturnValue([
+        {
+          action: 'add',
+          payload: {
+            image: '',
+            point: 1,
+            pda_sub_type: 'Validator',
+            node_type: 'custodian',
+            owner: '',
+          },
+        },
+        {
+          action: 'update',
+          payload: {
+            pda_id: '',
+            point: 1,
+          },
+        },
+      ]);
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+    });
+    test('should call issueNewStakerPDA for "add" action', async () => {
+      jest.useFakeTimers();
+      const latency = 1000;
+      const chuckSize = 10;
+      const intervalIdPromise = service.jobListener(latency, chuckSize);
+      const intervalId = await intervalIdPromise;
+      jest.advanceTimersByTime(latency);
+      expect(service.issueNewStakerPDA).toHaveBeenCalledWith({
+        image: '',
+        point: 1,
+        pda_sub_type: 'Validator',
+        node_type: 'custodian',
+        owner: '',
+      });
+      clearInterval(intervalId);
+    });
+    test('should call issueNewStakerPDA for "update" action', async () => {
+      jest.useFakeTimers();
+      const latency = 1000;
+      const chuckSize = 10;
+      const intervalIdPromise = service.jobListener(latency, chuckSize);
+      const intervalId = await intervalIdPromise;
+      jest.advanceTimersByTime(latency);
+      expect(service.updateIssuedStakerPDA).toHaveBeenCalledWith({
+        pda_id: '',
+        point: 1,
+      });
+      clearInterval(intervalId);
+    });
+    test('Should call all method from Promise whrn promises.length > 0 with correct parameters', async () => {
+      jest.useFakeTimers();
+      jest.spyOn(Promise, 'all').mockResolvedValue;
+      const latency = 1000;
+      const chuckSize = 10;
+      const intervalIdPromise = service.jobListener(latency, chuckSize);
+      const intervalId = await intervalIdPromise;
+      jest.advanceTimersByTime(latency);
+      expect(Promise.all).toHaveBeenCalledWith([{}, {}]);
+      clearInterval(intervalId);
+    });
+  });
+
+  describe('stopJobListener', () => {
+    test('Should be defined', async () => {
+      expect(service.stopJobListener).toBeDefined();
+    });
+    test('Should call clearInterval method with the correct parameter', async () => {
+      const listenerID: any = 12;
+      jest.spyOn(global, 'clearInterval').mockReturnValue;
+      await service.stopJobListener(listenerID);
+      expect(clearInterval).toHaveBeenCalledWith(listenerID);
     });
   });
 });
