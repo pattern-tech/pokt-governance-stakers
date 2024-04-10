@@ -330,7 +330,7 @@ export class CoreService {
 
       // Initialize pda job listener
       this.pdaQueue.reset();
-      const pdaJobListenerID = await this.pdaService.jobListener(1000, 1);
+      const pdaJobListenerID = await this.pdaService.jobListener(2000, 2);
       // Staker -> Validator PDAs
       await this.recalculateValidatorPDAs(validStakersPDAs);
 
