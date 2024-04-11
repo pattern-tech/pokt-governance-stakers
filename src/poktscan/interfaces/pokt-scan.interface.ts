@@ -4,6 +4,8 @@ export interface PoktScanNodeItem {
   service_domain: string;
   custodial: boolean;
   tokens: number;
+  start_height: number;
+  height: number;
 }
 
 export interface PoktScanNodePagination {
