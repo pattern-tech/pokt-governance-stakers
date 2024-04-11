@@ -108,8 +108,8 @@ export class PoktScanRetriever implements BaseRetriever<never, PoktScanOutput> {
   }
 
   private serializer(nodeItems: Array<PoktScanNodeItem>): PoktScanOutput {
-    const POKT_STACKED_BLOCK_HEIGHT = parseInt(
-      this.config.get<string>('POKT_STACKED_BLOCK_HEIGHT'),
+    const POKT_STAKED_BLOCK_HEIGHT = parseInt(
+      this.config.get<string>('POKT_STAKED_BLOCK_HEIGHT'),
     );
     const result: PoktScanOutput = {
       custodian: {},
@@ -119,10 +119,7 @@ export class PoktScanRetriever implements BaseRetriever<never, PoktScanOutput> {
     for (let index = 0; index < nodeItems.length; index++) {
       const nodeItem = nodeItems[index];
 
-      if (
-        nodeItem.height - POKT_STACKED_BLOCK_HEIGHT >=
-        nodeItem.start_height
-      ) {
+      if (nodeItem.height - POKT_STAKED_BLOCK_HEIGHT >= nodeItem.start_height) {
         if (nodeItem.custodial === true) {
           const newItem = {
             domain: nodeItem.service_domain,
