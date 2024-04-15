@@ -7,10 +7,11 @@ async function bootstrap() {
   const app = await NestFactory.createApplicationContext(CoreModule, {
     bufferLogs: true,
   });
-  const coreService = app.get<CoreService>(CoreService);
-
   app.useLogger(app.get(WinstonProvider));
 
+  const coreService = app.get<CoreService>(CoreService);
   await coreService.handler();
+
+  await app.close();
 }
 bootstrap();

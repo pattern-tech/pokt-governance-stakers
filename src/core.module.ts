@@ -32,6 +32,7 @@ import { CoreService } from './core.service';
                     host: config.get<string>('GRAFANA_LOKI_HOST'),
                     basicAuth: lokiAuth?.length > 0 ? lokiAuth : undefined,
                     format: format.json(),
+                    batching: false,
                     labels: {
                       serviceName:
                         grafanaServiceName?.length > 0

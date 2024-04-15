@@ -329,7 +329,6 @@ export class CoreService {
       ) as Array<IssuedStakerPDA>;
 
       // Initialize pda job listener
-      this.pdaQueue.reset();
       const pdaJobListenerID = await this.pdaService.jobListener(2000, 2);
       // Staker -> Validator PDAs
       await this.recalculateValidatorPDAs(validStakersPDAs);
